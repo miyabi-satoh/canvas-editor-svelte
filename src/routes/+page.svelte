@@ -188,9 +188,9 @@
 </script>
 
 <svelte:window on:resize={resize} />
-<div class="flex">
+<div class="flex flex-1">
 	<!-- left -->
-	<div class="flex-1 p-2 flex flex-col justify-center">
+	<div class="flex flex-col flex-1 p-2 justify-center">
 		<Heading class="flex items-center mb-2" customSize="text-lg" tag="h2">
 			プレビュー
 			<Secondary class="flex ml-8">
