@@ -31,8 +31,10 @@
 			<NavLi href="/about">About</NavLi>
 		</NavUl>
 	</Navbar>
-	<main class="flex-1 min-h-0 border-y border-slate-500">
-		<slot />
+	<main class="flex flex-1 min-h-0 border-y border-slate-500 justify-center">
+		<div class="flex container">
+			<slot />
+		</div>
 	</main>
 	<Footer footerType="custom" customClass="p-2 bg-white rounded-lg shadow dark:bg-gray-800">
 		<FooterCopyright href="/" by="amiiby.com" />
