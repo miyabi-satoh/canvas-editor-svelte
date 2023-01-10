@@ -11,7 +11,7 @@
 		Checkbox,
 		Span
 	} from 'flowbite-svelte';
-	import { Layer, type LayerType, LayerTypeEnum, Rectangle, Line, Shape } from '../lib/layer';
+	import { Layer, type LayerType, LayerTypeEnum, Rectangle, ClosePath, Line } from '../lib/layer';
 	import Icon from '@iconify/svelte';
 	import NumberInput from '../lib/NumberInput.svelte';
 	import ColorInput from '$lib/ColorInput.svelte';
@@ -57,7 +57,7 @@
 			if (ctx) {
 				console.log('updateCanvas');
 				ctx.clearRect(0, 0, elCanvas!.width, elCanvas.height);
-				layers.forEach((layer) => {
+				[...layers].reverse().forEach((layer) => {
 					ctx.save();
 					layer.render(ctx);
 					ctx.restore();
@@ -95,18 +95,29 @@
 		selectedLayerId = newId;
 	}
 
+	function handleClickUp(i: number) {
+		if (layers.length > 1 && i != 0) {
+			const target = layers[i];
+			layers[i] = layers[i - 1];
+			layers[i - 1] = target;
+		}
+	}
+
+	function handleClickDown(i: number) {
+		if (layers.length > 1 && i != layers.length - 1) {
+			const target = layers[i];
+			layers[i] = layers[i + 1];
+			layers[i + 1] = target;
+		}
+	}
+
 	function handleClickTrash(i: number) {
-		const idx = layers.findIndex((layer) => layer.id == i);
-		const keep = layers.filter((layer) => layer.id != i);
-		layers = [...keep];
-		if (selectedLayerId == i) {
-			if (layers[idx]) {
-				selectedLayerId = layers[idx].id;
-			} else if (layers.length > 0) {
-				selectedLayerId = layers[layers.length - 1].id;
-			} else {
-				selectedLayerId = -1;
-			}
+		const targetId = layers[i].id;
+		layers = [...layers.slice(0, i), ...layers.slice(i + 1)];
+		if (layers.length == 0) {
+			selectedLayerId = -1;
+		} else if (selectedLayerId == targetId) {
+			selectedLayerId = layers[Math.max(i - 1, 0)].id;
 		}
 	}
 
@@ -160,25 +171,40 @@
 		}
 	}
 
-	function handleChangeType() {
-		console.log('change type');
-		if (current && current.type != selectedLayerType) {
-			switch (selectedLayerType) {
+	$: onChangeType(selectedLayerType);
+	function onChangeType(type: LayerType) {
+		console.log('onChangeType');
+		if (current && current.type != type) {
+			const id = current.id;
+			const index = layers.findIndex((layer) => layer.id == id);
+			switch (type) {
 				case LayerTypeEnum.Line:
-					current = new Line(current.id, current.name);
+					let line = new Line(current.id, current.name);
+					line.pt[1].x = canvasWidth;
+					line.pt[0].y = Math.floor(canvasHeight / 2);
+					line.pt[1].y = line.pt[0].y;
+					current = line;
 					break;
-				case LayerTypeEnum.Rectangle:
-					current = new Rectangle(current.id, current.name);
+				default:
+					let rect = new Rectangle(current.id, current.name);
+					rect.width = canvasWidth;
+					rect.height = canvasHeight;
+					current = rect;
 					break;
 			}
+			layers[index] = current;
 		}
 	}
 
-	$: if ((current = layers.find((layer) => layer.id == selectedLayerId))) {
-		selectedLayerType = current.type;
-	} else {
-		selectedLayerId = -1;
-		selectedLayerType = LayerTypeEnum.Rectangle;
+	$: onChangeSelectedLayer(selectedLayerId);
+	function onChangeSelectedLayer(selected: number) {
+		console.log('onChangeSelectedLayer');
+		if ((current = layers.find((layer) => layer.id == selected))) {
+			selectedLayerType = current.type;
+		} else {
+			selectedLayerId = -1;
+			selectedLayerType = LayerTypeEnum.Rectangle;
+		}
 	}
 
 	$: if (elScrollTo) {
@@ -218,7 +244,7 @@
 		<div class="flex-1" bind:this={elDiv}>
 			{#if canvasData}
 				<img
-					class="border border-gray-200  h-auto mx-auto preview"
+					class="border border-dotted border-gray-200  h-auto mx-auto preview"
 					style="max-height:{imgMaxHeight}"
 					src={canvasData}
 					alt="preview"
@@ -269,7 +295,7 @@
 				<ul
 					class="max-h-48 overflow-y-auto bg-white rounded border border-gray-200 dark:bg-gray-900 dark:border-gray-600 divide-y divide-gray-200 dark:divide-gray-600"
 				>
-					{#each layers as layer (layer.id)}
+					{#each layers as layer, i (layer.id)}
 						<li class="flex items-center h-12 p-2">
 							<Radio
 								class="flex-1"
@@ -280,10 +306,24 @@
 							>
 								{layer.name}
 							</Radio>
-							<button class="btn-icon btn-danger" on:click={() => handleClickTrash(layer.id)}>
-								<Icon icon="mdi:trash" height="auto" />
-							</button>
-							<Tooltip style="light">{layer.name}を削除</Tooltip>
+							<div class="inline-flex gap-2">
+								<button disabled={i == 0} class="btn-icon" on:click={() => handleClickUp(i)}>
+									<Icon icon="mdi:arrow-up" height="auto" />
+								</button>
+								<Tooltip style="light">上に移動</Tooltip>
+								<button
+									disabled={i == layers.length - 1}
+									class="btn-icon"
+									on:click={() => handleClickDown(i)}
+								>
+									<Icon icon="mdi:arrow-down" height="auto" />
+								</button>
+								<Tooltip style="light">上に移動</Tooltip>
+								<button class="btn-icon btn-danger" on:click={() => handleClickTrash(i)}>
+									<Icon icon="mdi:trash" height="auto" />
+								</button>
+								<Tooltip style="light">{layer.name}を削除</Tooltip>
+							</div>
 							{#if current && current.id == layer.id}
 								<span bind:this={elScrollTo} />
 							{/if}
@@ -310,9 +350,54 @@
 						class="ml-2 flex-1"
 						items={types}
 						bind:value={selectedLayerType}
-						on:change={handleChangeType}
 					/>
 				</div>
+				{#if current instanceof Line}
+					<!-- 始点 -->
+					<PropertyBlock name="始点">
+						<div slot="props" class="ml-2 flex gap-2">
+							<NumberInput
+								label="X"
+								id="x_from"
+								min="-2000"
+								max="2000"
+								bind:value={current.pt[0].x}
+							/>
+							<NumberInput
+								label="Y"
+								id="y_from"
+								min="-2000"
+								max="2000"
+								bind:value={current.pt[0].y}
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							({current.pt[0].x} , {current.pt[0].y})
+						</Span>
+					</PropertyBlock>
+					<!-- 終点 -->
+					<PropertyBlock name="終点">
+						<div slot="props" class="ml-2 flex gap-2">
+							<NumberInput
+								label="X"
+								id="x_to"
+								min="-2000"
+								max="2000"
+								bind:value={current.pt[1].x}
+							/>
+							<NumberInput
+								label="Y"
+								id="y_to"
+								min="-2000"
+								max="2000"
+								bind:value={current.pt[1].y}
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							({current.pt[1].x} , {current.pt[1].y})
+						</Span>
+					</PropertyBlock>
+				{/if}
 				{#if current instanceof Rectangle}
 					<!-- 塗りつぶし -->
 					<PropertyBlock name="塗りつぶし">
@@ -321,27 +406,6 @@
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
 							{current.bgColor} / {current.bgAlpha}%
-						</Span>
-					</PropertyBlock>
-
-					<!-- 枠線 -->
-					<PropertyBlock name="枠線">
-						<div slot="props" class="ml-2">
-							<ColorInput
-								id="border_color"
-								bind:color={current.lineColor}
-								bind:alpha={current.lineAlpha}
-							/>
-							<NumberInput
-								label="太さ"
-								id="border_width"
-								min="0"
-								max="100"
-								bind:value={current.lineWidth}
-							/>
-						</div>
-						<Span slot="summary" class="font-normal text-sm">
-							{current.lineWidth}px {current.lineColor} / {current.lineAlpha}%
 						</Span>
 					</PropertyBlock>
 
@@ -426,7 +490,28 @@
 						</Span>
 					</PropertyBlock>
 				{/if}
-				{#if current instanceof Shape}
+				{#if current instanceof ClosePath}
+					<!-- 線の色と太さ -->
+					<PropertyBlock name="線の色と太さ">
+						<div slot="props" class="ml-2">
+							<ColorInput
+								id="border_color"
+								bind:color={current.lineColor}
+								bind:alpha={current.lineAlpha}
+							/>
+							<NumberInput
+								label="太さ"
+								id="border_width"
+								min={current instanceof Line ? 1 : 0}
+								max={Math.ceil(Math.sqrt(canvasWidth ** 2 + canvasHeight ** 2))}
+								bind:value={current.lineWidth}
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							{current.lineWidth}px {current.lineColor} / {current.lineAlpha}%
+						</Span>
+					</PropertyBlock>
+
 					<!-- シャドウ -->
 					<PropertyBlock name="影">
 						<div slot="props" class="ml-2">
@@ -461,7 +546,7 @@
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
 							{current.shadowBlur}px ({current.shadowOffsetX} , {current.shadowOffsetY})
-							{current.shadowColor} / {current.shadowAlpha}
+							{current.shadowColor} / {current.shadowAlpha}%
 						</Span>
 					</PropertyBlock>
 				{/if}
