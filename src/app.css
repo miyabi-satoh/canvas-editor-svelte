@@ -24,6 +24,12 @@
 		@apply hover:text-red-600  dark:hover:text-red-700;
 	}
 
+	button[disabled].btn-icon {
+		@apply cursor-default flex
+    active:bg-inherit
+    text-gray-700 dark:text-gray-700;
+	}
+
 	input[type='color'] {
 		@apply border-0 cursor-pointer;
 		background: none;
