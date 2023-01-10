@@ -11,7 +11,7 @@
 		Checkbox,
 		Span
 	} from 'flowbite-svelte';
-	import { Layer, LayerType } from '../lib/layer';
+	import { Layer, type LayerType, LayerTypeEnum, Rectangle, Line, Shape } from '../lib/layer';
 	import Icon from '@iconify/svelte';
 	import NumberInput from '../lib/NumberInput.svelte';
 	import ColorInput from '$lib/ColorInput.svelte';
@@ -28,17 +28,17 @@
 	let layers: Layer[] = [];
 	let selectedLayerId = -1;
 	let current: Layer | undefined;
-	// let maxId = 1;
 	let fixedRatio = true;
 	let autoPreviewUpdate = true;
+	let selectedLayerType: LayerType;
 
 	const types = [
-		{ value: LayerType.Line, name: '直線' },
-		{ value: LayerType.Rectangle, name: '矩形' },
-		{ value: LayerType.Ellipse, name: '円・楕円' },
-		{ value: LayerType.Polygon, name: '多角形' },
-		{ value: LayerType.Text, name: '文字' },
-		{ value: LayerType.Image, name: '画像' }
+		{ value: LayerTypeEnum.Line, name: '直線' },
+		{ value: LayerTypeEnum.Rectangle, name: '矩形' },
+		{ value: LayerTypeEnum.Ellipse, name: '円・楕円' },
+		{ value: LayerTypeEnum.Polygon, name: '多角形' },
+		{ value: LayerTypeEnum.Text, name: '文字' },
+		{ value: LayerTypeEnum.Image, name: '画像' }
 	];
 
 	function updatePreview() {
@@ -86,11 +86,12 @@
 		}
 		newId++;
 
-		let layer = new Layer(newId, `レイヤー#${newId}`);
+		let layer = new Rectangle(newId, `レイヤー#${newId}`);
 		layer.width = canvasWidth;
 		layer.height = canvasHeight;
 
 		layers = [layer, ...layers];
+		selectedLayerType = layer.type;
 		selectedLayerId = newId;
 	}
 
@@ -110,59 +111,74 @@
 	}
 
 	function handleClickAlignLeft() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.x = 0;
 		}
 	}
 
 	function handleClickAlignCenter() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.x = Math.floor((canvasWidth - current.width) / 2);
 		}
 	}
 
 	function handleClickAlignRight() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.x = canvasWidth - current.width;
 		}
 	}
 
 	function handleClickAlignTop() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.y = 0;
 		}
 	}
 
 	function handleClickAlignMiddle() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.y = Math.floor((canvasHeight - current.height) / 2);
 		}
 	}
 
 	function handleClickAlignBottom() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.y = canvasHeight - current.height;
 		}
 	}
 
 	function handleClickFitWidth() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.x = 0;
 			current.width = canvasWidth;
 		}
 	}
 
 	function handleClickFitHeight() {
-		if (current) {
+		if (current instanceof Rectangle) {
 			current.y = 0;
 			current.height = canvasHeight;
 		}
 	}
 
-	$: if (selectedLayerId >= 0) {
-		current = layers.find((layer) => layer.id == selectedLayerId);
+	function handleChangeType() {
+		console.log('change type');
+		if (current && current.type != selectedLayerType) {
+			switch (selectedLayerType) {
+				case LayerTypeEnum.Line:
+					current = new Line(current.id, current.name);
+					break;
+				case LayerTypeEnum.Rectangle:
+					current = new Rectangle(current.id, current.name);
+					break;
+			}
+		}
+	}
+
+	$: if ((current = layers.find((layer) => layer.id == selectedLayerId))) {
+		selectedLayerType = current.type;
 	} else {
-		current = undefined;
+		selectedLayerId = -1;
+		selectedLayerType = LayerTypeEnum.Rectangle;
 	}
 
 	$: if (elScrollTo) {
@@ -288,9 +304,16 @@
 				<!-- type -->
 				<div class="flex items-center mt-2">
 					<Label for="type">形状</Label>
-					<Select size="sm" id="type" class="ml-2 flex-1" items={types} bind:value={current.type} />
+					<Select
+						size="sm"
+						id="type"
+						class="ml-2 flex-1"
+						items={types}
+						bind:value={selectedLayerType}
+						on:change={handleChangeType}
+					/>
 				</div>
-				{#if current.type == LayerType.Rectangle}
+				{#if current instanceof Rectangle}
 					<!-- 塗りつぶし -->
 					<PropertyBlock name="塗りつぶし">
 						<div slot="props" class="ml-2">
@@ -402,7 +425,8 @@
 							({current.x} , {current.y})
 						</Span>
 					</PropertyBlock>
-
+				{/if}
+				{#if current instanceof Shape}
 					<!-- シャドウ -->
 					<PropertyBlock name="影">
 						<div slot="props" class="ml-2">
