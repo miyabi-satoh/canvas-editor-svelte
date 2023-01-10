@@ -7,6 +7,7 @@
 	export let id: string;
 	export let min: string | number;
 	export let max: string | number;
+	export let withRange = true;
 </script>
 
 <div class="flex items-center">
@@ -14,8 +15,10 @@
 	<div class="w-16 mx-2">
 		<Input size="sm" type="number" {id} {min} {max} bind:value />
 	</div>
-	<div class="flex-1">
-		<Range {min} {max} bind:value />
-	</div>
+	{#if withRange}
+		<div class="flex-1">
+			<Range {min} {max} bind:value />
+		</div>
+	{/if}
 	<slot />
 </div>
