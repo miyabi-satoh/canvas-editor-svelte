@@ -15,7 +15,7 @@
 </script>
 
 <button class="w-full" on:click={() => (open = !open)}>
-	<Heading tag="h4" class="flex items-center" customSize="text-sm mt-2">
+	<Heading tag="h4" class="flex gap-2 items-center" customSize="text-sm mt-2">
 		<Secondary>
 			{#if open}
 				<Icon icon="mdi:chevron-down" height="auto" />
@@ -25,7 +25,7 @@
 		</Secondary>
 		{name}
 		{#if !open}
-			<Secondary class="ml-2">
+			<Secondary>
 				<slot name="summary" />
 			</Secondary>
 		{/if}

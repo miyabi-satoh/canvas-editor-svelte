@@ -10,9 +10,9 @@
 	export let withRange = true;
 </script>
 
-<div class="flex items-center">
+<div class="flex items-center gap-2">
 	<Label for={id} class={labelClass}>{label}</Label>
-	<div class="w-16 mx-2">
+	<div class="w-16">
 		<Input size="sm" type="number" {id} {min} {max} bind:value />
 	</div>
 	{#if withRange}

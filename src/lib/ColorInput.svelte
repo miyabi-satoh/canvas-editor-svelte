@@ -9,11 +9,11 @@
 	export let id: string;
 </script>
 
-<div class="flex items-center">
+<div class="flex items-center gap-2">
 	<Label class={labelClass} for={id}>{label}</Label>
-	<input type="color" class="ml-2" {id} bind:value={color} />
+	<input type="color" {id} bind:value={color} />
 	{#if alpha !== undefined}
-		<div class="flex-1 ml-2">
+		<div class="flex-1">
 			<NumberInput label="透明度" id="{id}_alpha" min="0" max="100" bind:value={alpha} />
 		</div>
 	{/if}
