@@ -1,5 +1,11 @@
 import hexRgb from 'hex-rgb';
 
+/**
+ * Layerの種別を表す定数
+ * @date 2023/1/10 - 23:16:59
+ *
+ * @type {{ None: 0; Line: 1; Rectangle: 2; Ellipse: 3; Polygon: 4; Text: 5; Image: 6; }}
+ */
 export const LayerTypeEnum = {
 	None: 0,
 	Line: 1,
@@ -10,8 +16,23 @@ export const LayerTypeEnum = {
 	Image: 6
 } as const;
 
+/**
+ * Layerの種別を表す型
+ * @date 2023/1/10 - 23:18:16
+ *
+ * @export
+ * @typedef {LayerType}
+ */
 export type LayerType = typeof LayerTypeEnum[keyof typeof LayerTypeEnum];
 
+/**
+ * Layerの基底クラス
+ * @date 2023/1/10 - 23:18:55
+ *
+ * @export
+ * @class Layer
+ * @typedef {Layer}
+ */
 export class Layer {
 	id: number;
 	name: string;
@@ -28,7 +49,16 @@ export class Layer {
 	}
 }
 
-export class Shape extends Layer {
+/**
+ * 閉じたパスを持つLayerクラス
+ * @date 2023/1/10 - 23:19:18
+ *
+ * @export
+ * @class Shape
+ * @typedef {ClosePath}
+ * @extends {Layer}
+ */
+export class ClosePath extends Layer {
 	lineColor = '#000000';
 	lineAlpha = 100;
 	lineWidth = 0;
@@ -58,21 +88,33 @@ export class Shape extends Layer {
 	}
 
 	render(ctx: CanvasRenderingContext2D): void {
-		ctx.lineWidth = this.lineWidth;
-		ctx.strokeStyle = this.strokeStyle;
-		if (this.shadowBlur || this.shadowOffsetX || this.shadowOffsetY) {
-			ctx.shadowColor = this.shadowColorCSS;
-			ctx.shadowBlur = this.shadowBlur;
-			ctx.shadowOffsetX = this.shadowOffsetX;
-			ctx.shadowOffsetY = this.shadowOffsetY;
+		if (this.pt.length >= 2) {
+			ctx.lineWidth = this.lineWidth;
+			ctx.strokeStyle = this.strokeStyle;
+			if (this.shadowBlur || this.shadowOffsetX || this.shadowOffsetY) {
+				ctx.shadowColor = this.shadowColorCSS;
+				ctx.shadowBlur = this.shadowBlur;
+				ctx.shadowOffsetX = this.shadowOffsetX;
+				ctx.shadowOffsetY = this.shadowOffsetY;
+			}
+
+			ctx.beginPath();
+			const p = this.pt[0];
+			ctx.moveTo(p.x, p.y);
+			this.pt.slice(1).forEach((p) => {
+				ctx.lineTo(p.x, p.y);
+			});
+			ctx.closePath();
+			ctx.stroke();
 		}
 	}
 }
 
-export class Line extends Shape {
+export class Line extends ClosePath {
 	constructor(id: number, name: string) {
 		super(id, name);
 		this.type = LayerTypeEnum.Line;
+		this.lineWidth = 1;
 		this.pt = [
 			{ x: 0, y: 0 },
 			{ x: 0, y: 0 }
@@ -81,29 +123,49 @@ export class Line extends Shape {
 
 	render(ctx: CanvasRenderingContext2D): void {
 		if (this.pt.length != 2) {
-			throw new Error(`pt.length == ${this.pt.length}`);
-		}
-		const p1 = this.pt[0];
-		const p2 = this.pt[1];
-		if (p1.x - p2.x == 0 || p1.y == p2.y) {
-			console.log('p1', p1);
-			console.log('p2', p2);
+			throw new Error(`pt length ${this.pt.length}`);
 		} else {
-			ctx.beginPath();
-			ctx.moveTo(p1.x, p1.y);
-			ctx.lineTo(p2.x, p2.y);
-			ctx.closePath();
-
 			super.render(ctx);
-			ctx.stroke();
 		}
 	}
 }
 
-export class Rectangle extends Shape {
+/**
+ * 塗りつぶし可能なLayerクラス
+ * @date 2023/1/10 - 23:22:44
+ *
+ * @export
+ * @class Shape2D
+ * @typedef {Shape2D}
+ * @extends {ClosePath}
+ */
+export class Shape2D extends ClosePath {
 	bgColor = '#ffffff';
 	bgAlpha = 100;
 
+	get fillStyle(): string {
+		return hexRgb(this.bgColor, {
+			format: 'css',
+			alpha: this.bgAlpha / 100
+		});
+	}
+
+	render(ctx: CanvasRenderingContext2D): void {
+		super.render(ctx);
+		ctx.fillStyle = this.fillStyle;
+	}
+}
+
+/**
+ * 四角形を描画するクラス
+ * @date 2023/1/10 - 23:25:36
+ *
+ * @export
+ * @class Rectangle
+ * @typedef {Rectangle}
+ * @extends {Shape2D}
+ */
+export class Rectangle extends Shape2D {
 	constructor(id: number, name: string) {
 		super(id, name);
 		this.type = LayerTypeEnum.Rectangle;
@@ -111,13 +173,6 @@ export class Rectangle extends Shape {
 			{ x: 0, y: 0 },
 			{ x: 0, y: 0 }
 		];
-	}
-
-	get fillStyle(): string {
-		return hexRgb(this.bgColor, {
-			format: 'css',
-			alpha: this.bgAlpha / 100
-		});
 	}
 
 	get x(): number {
@@ -159,8 +214,6 @@ export class Rectangle extends Shape {
 			console.log('h', this.height);
 		} else {
 			super.render(ctx);
-			ctx.fillStyle = this.fillStyle;
-
 			ctx.fillRect(this.x, this.y, this.width, this.height);
 			if (this.lineWidth > 0) {
 				ctx.strokeRect(this.x, this.y, this.width, this.height);
