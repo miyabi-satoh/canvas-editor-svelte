@@ -27,7 +27,7 @@
 	button[disabled].btn-icon {
 		@apply cursor-default flex
     active:bg-inherit
-    text-gray-700 dark:text-gray-700;
+    text-gray-400 dark:text-gray-700;
 	}
 
 	input[type='color'] {
