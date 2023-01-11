@@ -19,6 +19,7 @@
 
 	let elCanvas: HTMLCanvasElement | undefined = undefined;
 	let elDiv: HTMLDivElement | undefined = undefined;
+	let elAnchor: HTMLAnchorElement | undefined = undefined;
 	let elScrollTo: HTMLElement;
 	let canvasWidth = 1200;
 	let canvasHeight = 630;
@@ -63,7 +64,7 @@
 					ctx.restore();
 				});
 
-				canvasData = elCanvas!.toDataURL('image/png');
+				canvasData = elCanvas.toDataURL('image/png');
 			}
 		}
 	}
@@ -171,6 +172,21 @@
 		}
 	}
 
+	function handleClickDownload() {
+		if (elCanvas && elAnchor) {
+			const a = elAnchor;
+			elCanvas.toBlob((blob: Blob | null) => {
+				if (blob) {
+					a.href = URL.createObjectURL(blob);
+					a.download = 'CanvasData.png';
+					a.click();
+
+					URL.revokeObjectURL(a.href);
+				}
+			}, 'image/png');
+		}
+	}
+
 	$: onChangeType(selectedLayerType);
 	function onChangeType(type: LayerType) {
 		console.log('onChangeType');
@@ -233,18 +249,18 @@
 <div class="flex flex-1">
 	<!-- left -->
 	<div class="flex flex-col flex-1 p-2 justify-center">
-		<Heading class="flex items-center mb-2" customSize="text-lg" tag="h2">
+		<Heading class="flex gap-8 items-center mb-2" customSize="text-lg" tag="h2">
 			プレビュー
-			<Secondary class="flex ml-8">
+			<Secondary class="flex gap-8">
 				<Button size="sm" on:click={updatePreview}>更新</Button>
-				<Checkbox class="ml-8" bind:checked={autoPreviewUpdate}>自動更新</Checkbox>
+				<Checkbox bind:checked={autoPreviewUpdate}>自動更新</Checkbox>
 			</Secondary>
 		</Heading>
 
 		<div class="flex-1" bind:this={elDiv}>
 			{#if canvasData}
 				<img
-					class="border border-dotted border-gray-200  h-auto mx-auto preview"
+					class="h-auto mx-auto preview"
 					style="max-height:{imgMaxHeight}"
 					src={canvasData}
 					alt="preview"
@@ -258,11 +274,11 @@
 
 		<div class="my-2">
 			<Heading tag="h3" customSize="text-base">キャンバスサイズ</Heading>
-			<div class="flex mt-2">
-				<div class="flex-1 px-2">
+			<div class="flex mt-2 gap-2">
+				<div class="flex-1">
 					<NumberInput label="幅" id="canvas_width" min="1" max="2000" bind:value={canvasWidth} />
 				</div>
-				<div class="flex-1 px-2">
+				<div class="flex-1">
 					<NumberInput
 						label="高さ"
 						id="canvas_height"
@@ -276,7 +292,10 @@
 		</div>
 
 		<div class="my-6 self-center">
-			<Button disabled={layers.length == 0}>画像をダウンロード</Button>
+			<Button disabled={layers.length == 0} on:click={handleClickDownload}
+				>画像をダウンロード</Button
+			>
+			<a class="hidden" bind:this={elAnchor} href="#download">Download</a>
 		</div>
 	</div>
 	<!-- right -->
@@ -337,20 +356,14 @@
 		{#if current}
 			<div class="flex-1 overflow-y-auto">
 				<!-- name -->
-				<div class="flex items-center">
+				<div class="flex items-center gap-2">
 					<Label for="name">名称</Label>
-					<Input size="sm" id="name" class="ml-2 flex-1" bind:value={current.name} />
+					<Input size="sm" id="name" class="flex-1" bind:value={current.name} />
 				</div>
 				<!-- type -->
-				<div class="flex items-center mt-2">
+				<div class="flex items-center gap-2 mt-2">
 					<Label for="type">形状</Label>
-					<Select
-						size="sm"
-						id="type"
-						class="ml-2 flex-1"
-						items={types}
-						bind:value={selectedLayerType}
-					/>
+					<Select size="sm" id="type" class="flex-1" items={types} bind:value={selectedLayerType} />
 				</div>
 				{#if current instanceof Line}
 					<!-- 始点 -->
@@ -411,14 +424,14 @@
 
 					<!-- サイズ -->
 					<PropertyBlock name="サイズ">
-						<div slot="props" class="ml-2">
+						<div slot="props" class="ml-2 flex flex-col gap-1">
 							<div>
 								<NumberInput
 									labelClass="w-7"
 									label="幅"
 									id="width"
 									min="0"
-									max="2000"
+									max={canvasWidth * 2}
 									bind:value={current.width}
 								>
 									<button class="btn-icon ml-2" on:click={handleClickFitWidth}>
@@ -427,13 +440,13 @@
 									<Tooltip style="light">幅をキャンバスに合わせる</Tooltip>
 								</NumberInput>
 							</div>
-							<div class="mt-1">
+							<div>
 								<NumberInput
 									labelClass="w-7"
 									label="高さ"
 									id="height"
 									min="-2000"
-									max="2000"
+									max={canvasHeight * 2}
 									bind:value={current.height}
 								>
 									<button class="btn-icon ml-2" on:click={handleClickFitHeight}>
@@ -451,39 +464,39 @@
 
 					<!-- 位置 -->
 					<PropertyBlock name="位置">
-						<div slot="props" class="ml-2">
-							<div>
-								<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.x}>
-									<button class="btn-icon px-2" on:click={handleClickAlignLeft}>
+						<div slot="props" class="ml-2 flex flex-col gap-1">
+							<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.x}>
+								<div class="flex gap-3">
+									<button class="btn-icon" on:click={handleClickAlignLeft}>
 										<Icon icon="mdi:format-horizontal-align-left" height="auto" />
 									</button>
 									<Tooltip style="light">右寄せ</Tooltip>
-									<button class="btn-icon px-2" on:click={handleClickAlignCenter}>
+									<button class="btn-icon" on:click={handleClickAlignCenter}>
 										<Icon icon="mdi:format-horizontal-align-center" height="auto" />
 									</button>
 									<Tooltip style="light">中央寄せ</Tooltip>
-									<button class="btn-icon pl-2" on:click={handleClickAlignRight}>
+									<button class="btn-icon" on:click={handleClickAlignRight}>
 										<Icon icon="mdi:format-horizontal-align-right" height="auto" />
 									</button>
 									<Tooltip style="light">左寄せ</Tooltip>
-								</NumberInput>
-							</div>
-							<div class="mt-1">
-								<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.y}>
-									<button class="btn-icon px-2" on:click={handleClickAlignTop}>
+								</div>
+							</NumberInput>
+							<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.y}>
+								<div class="flex gap-3">
+									<button class="btn-icon" on:click={handleClickAlignTop}>
 										<Icon icon="mdi:format-vertical-align-top" height="auto" />
 									</button>
 									<Tooltip style="light">上寄せ</Tooltip>
-									<button class="btn-icon px-2" on:click={handleClickAlignMiddle}>
+									<button class="btn-icon" on:click={handleClickAlignMiddle}>
 										<Icon icon="mdi:format-vertical-align-center" height="auto" />
 									</button>
 									<Tooltip style="light">中央寄せ</Tooltip>
-									<button class="btn-icon pl-2" on:click={handleClickAlignBottom}>
+									<button class="btn-icon" on:click={handleClickAlignBottom}>
 										<Icon icon="mdi:format-vertical-align-bottom" height="auto" />
 									</button>
 									<Tooltip style="light">下寄せ</Tooltip>
-								</NumberInput>
-							</div>
+								</div>
+							</NumberInput>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
 							({current.x} , {current.y})
@@ -514,7 +527,7 @@
 
 					<!-- シャドウ -->
 					<PropertyBlock name="影">
-						<div slot="props" class="ml-2">
+						<div slot="props" class="ml-2 flex flex-col gap-1">
 							<ColorInput
 								id="shadow_color"
 								bind:color={current.shadowColor}
@@ -534,15 +547,13 @@
 								max="100"
 								bind:value={current.shadowOffsetX}
 							/>
-							<div class="mt-1">
-								<NumberInput
-									label="垂直方向のオフセット"
-									id="shadow_offset_y"
-									min="-100"
-									max="100"
-									bind:value={current.shadowOffsetY}
-								/>
-							</div>
+							<NumberInput
+								label="垂直方向のオフセット"
+								id="shadow_offset_y"
+								min="-100"
+								max="100"
+								bind:value={current.shadowOffsetY}
+							/>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
 							{current.shadowBlur}px ({current.shadowOffsetX} , {current.shadowOffsetY})
