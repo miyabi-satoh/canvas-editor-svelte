@@ -324,3 +324,38 @@ export class Rectangle extends Shape2D {
 		}
 	}
 }
+
+export class Polygon extends Shape2D {
+	constructor(id: number, name: string) {
+		super(id, name);
+		this.type = LayerTypeEnum.Polygon;
+		this.pt = [
+			{ x: 0, y: 0 },
+			{ x: 0, y: 0 },
+			{ x: 0, y: 0 }
+		];
+	}
+
+	get numOfVertices(): number {
+		return this.pt.length;
+	}
+	set numOfVertices(value: number) {
+		this.pt.length = value;
+		console.log(value, this.pt.length);
+	}
+
+	render(ctx: CanvasRenderingContext2D): void {
+		if (this.pt.length < 3) {
+			throw new Error(`pt.length == ${this.pt.length}`);
+		}
+		this.applyShape(ctx);
+		this.applyFill(ctx);
+		this.applyPath(ctx);
+		if (this.bgAlpha > 0) {
+			ctx.fill();
+		}
+		if (this.lineWidth > 0) {
+			ctx.stroke();
+		}
+	}
+}

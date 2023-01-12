@@ -19,13 +19,15 @@
 		Line,
 		Shape,
 		Ellipse,
-		Shape2D
+		Shape2D,
+		Polygon
 	} from '../lib/layer';
 	import Icon from '@iconify/svelte';
 	import NumberInput from '../lib/NumberInput.svelte';
 	import ColorInput from '$lib/ColorInput.svelte';
 	import PropertyBlock from '$lib/PropertyBlock.svelte';
 	import { onMount } from 'svelte';
+	import Layout from './+layout.svelte';
 
 	let elCanvas: HTMLCanvasElement | undefined = undefined;
 	let elDiv: HTMLDivElement | undefined = undefined;
@@ -223,6 +225,14 @@
 					arc.radiusY = canvasHeight - arc.y;
 					current = arc;
 					break;
+				case LayerTypeEnum.Polygon:
+					let polygon = new Polygon(current.id, current.name);
+					polygon.pt[0].x = Math.floor(canvasWidth / 2);
+					polygon.pt[1].y = canvasHeight;
+					polygon.pt[2].x = canvasWidth;
+					polygon.pt[2].y = canvasHeight;
+					current = polygon;
+					break;
 				default:
 					let rect = new Rectangle(current.id, current.name);
 					rect.width = canvasWidth;
@@ -387,6 +397,47 @@
 					<Label for="type">形状</Label>
 					<Select size="sm" id="type" class="flex-1" items={types} bind:value={selectedLayerType} />
 				</div>
+				{#if current instanceof Polygon}
+					<!-- 頂点の数 -->
+					<PropertyBlock name="頂点の数">
+						<div slot="props" class="ml-2">
+							<NumberInput
+								label="頂点の数"
+								id="num_of_vertices"
+								min="3"
+								max="12"
+								bind:value={current.numOfVertices}
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							{current.numOfVertices}
+						</Span>
+					</PropertyBlock>
+					<!-- 頂点 -->
+					{#each current.pt as pt, index}
+						<PropertyBlock name="頂点{index + 1}">
+							<div slot="props" class="ml-2 flex gap-2">
+								<NumberInput
+									label="X"
+									id="x_{index}"
+									min="-2000"
+									max="2000"
+									bind:value={current.pt[index].x}
+								/>
+								<NumberInput
+									label="Y"
+									id="y_{index}"
+									min="-2000"
+									max="2000"
+									bind:value={current.pt[index].y}
+								/>
+							</div>
+							<Span slot="summary" class="font-normal text-sm">
+								({current.pt[index].x} , {current.pt[index].y})
+							</Span>
+						</PropertyBlock>
+					{/each}
+				{/if}
 				{#if current instanceof Line}
 					<!-- 始点 -->
 					<PropertyBlock name="始点">
