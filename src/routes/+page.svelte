@@ -434,6 +434,24 @@
 					</PropertyBlock>
 				{/if}
 				{#if current instanceof Ellipse}
+					<!-- 描画方法 -->
+					<PropertyBlock name="描画方法">
+						<div slot="props" class="ml-2">
+							<Select
+								size="sm"
+								id="type"
+								class="flex-1"
+								bind:value={current.moveToCenter}
+								items={[
+									{ value: 1, name: '半径を描く' },
+									{ value: 0, name: '弦を描く' }
+								]}
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							{current.moveToCenter ? '半径を描く' : '弦を描く'}
+						</Span>
+					</PropertyBlock>
 					<!-- 中心 -->
 					<PropertyBlock name="中心">
 						<div slot="props" class="ml-2 flex gap-2">

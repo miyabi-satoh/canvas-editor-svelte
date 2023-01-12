@@ -186,6 +186,7 @@ export class Ellipse extends Shape2D {
 	rotation = 0;
 	startAngle = 0;
 	endAngle = 360;
+	moveToCenter = 1;
 
 	constructor(id: number, name: string) {
 		super(id, name);
@@ -235,17 +236,20 @@ export class Ellipse extends Shape2D {
 			this.applyFill(ctx);
 
 			ctx.beginPath();
-			ctx.moveTo(this.x, this.y);
+			if (this.moveToCenter) {
+				ctx.moveTo(this.x, this.y);
+			}
 			ctx.ellipse(
 				this.x,
 				this.y,
 				this.radiusX,
 				this.radiusY,
-				(this.rotation * Math.PI) / 180,
-				(this.startAngle * Math.PI) / 180,
-				(this.endAngle * Math.PI) / 180,
+				(-1 * this.rotation * Math.PI) / 180,
+				(-1 * this.startAngle * Math.PI) / 180,
+				(-1 * this.endAngle * Math.PI) / 180,
 				true
 			);
+			ctx.closePath();
 			if (this.bgAlpha > 0) {
 				ctx.fill();
 			}
