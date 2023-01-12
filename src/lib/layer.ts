@@ -33,7 +33,7 @@ export type LayerType = typeof LayerTypeEnum[keyof typeof LayerTypeEnum];
  * @class Layer
  * @typedef {Layer}
  */
-export class Layer {
+export abstract class Layer {
 	id: number;
 	name: string;
 	type: LayerType = LayerTypeEnum.None;
@@ -44,21 +44,19 @@ export class Layer {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	render(ctx: CanvasRenderingContext2D): void {
-		throw new Error('not implemented');
-	}
+	abstract render(ctx: CanvasRenderingContext2D): void;
 }
 
 /**
- * 閉じたパスを持つLayerクラス
- * @date 2023/1/10 - 23:19:18
+ * LineとShadowを持つLayerクラス
+ * @date 2023/1/11 - 23:48:38
  *
  * @export
  * @class Shape
- * @typedef {ClosePath}
+ * @typedef {Shape}
  * @extends {Layer}
  */
-export class ClosePath extends Layer {
+export abstract class Shape extends Layer {
 	lineColor = '#000000';
 	lineAlpha = 100;
 	lineWidth = 0;
@@ -67,11 +65,6 @@ export class ClosePath extends Layer {
 	shadowBlur = 0;
 	shadowOffsetX = 0;
 	shadowOffsetY = 0;
-	pt: Array<{ x: number; y: number }> = [];
-
-	constructor(id: number, name: string) {
-		super(id, name);
-	}
 
 	get strokeStyle(): string {
 		return hexRgb(this.lineColor, {
@@ -87,17 +80,32 @@ export class ClosePath extends Layer {
 		});
 	}
 
-	render(ctx: CanvasRenderingContext2D): void {
-		if (this.pt.length >= 2) {
-			ctx.lineWidth = this.lineWidth;
-			ctx.strokeStyle = this.strokeStyle;
-			if (this.shadowBlur || this.shadowOffsetX || this.shadowOffsetY) {
-				ctx.shadowColor = this.shadowColorCSS;
-				ctx.shadowBlur = this.shadowBlur;
-				ctx.shadowOffsetX = this.shadowOffsetX;
-				ctx.shadowOffsetY = this.shadowOffsetY;
-			}
+	applyShape(ctx: CanvasRenderingContext2D): void {
+		ctx.lineWidth = this.lineWidth;
+		ctx.strokeStyle = this.strokeStyle;
+		if (this.shadowBlur || this.shadowOffsetX || this.shadowOffsetY) {
+			ctx.shadowColor = this.shadowColorCSS;
+			ctx.shadowBlur = this.shadowBlur;
+			ctx.shadowOffsetX = this.shadowOffsetX;
+			ctx.shadowOffsetY = this.shadowOffsetY;
+		}
+	}
+}
 
+/**
+ * 閉じたパスを持つLayerクラス
+ * @date 2023/1/11 - 23:51:07
+ *
+ * @export
+ * @class ClosePath
+ * @typedef {ClosePath}
+ * @extends {Shape}
+ */
+abstract class ClosePath extends Shape {
+	pt: Array<{ x: number; y: number }> = [];
+
+	applyPath(ctx: CanvasRenderingContext2D): void {
+		if (this.pt.length >= 2) {
 			ctx.beginPath();
 			const p = this.pt[0];
 			ctx.moveTo(p.x, p.y);
@@ -105,11 +113,19 @@ export class ClosePath extends Layer {
 				ctx.lineTo(p.x, p.y);
 			});
 			ctx.closePath();
-			ctx.stroke();
 		}
 	}
 }
 
+/**
+ * 直線を表現するLayerクラス
+ * @date 2023/1/12 - 11:13:07
+ *
+ * @export
+ * @class Line
+ * @typedef {Line}
+ * @extends {ClosePath}
+ */
 export class Line extends ClosePath {
 	constructor(id: number, name: string) {
 		super(id, name);
@@ -125,7 +141,9 @@ export class Line extends ClosePath {
 		if (this.pt.length != 2) {
 			throw new Error(`pt length ${this.pt.length}`);
 		} else {
-			super.render(ctx);
+			this.applyShape(ctx);
+			this.applyPath(ctx);
+			ctx.stroke();
 		}
 	}
 }
@@ -139,7 +157,7 @@ export class Line extends ClosePath {
  * @typedef {Shape2D}
  * @extends {ClosePath}
  */
-export class Shape2D extends ClosePath {
+export abstract class Shape2D extends ClosePath {
 	bgColor = '#ffffff';
 	bgAlpha = 100;
 
@@ -150,9 +168,91 @@ export class Shape2D extends ClosePath {
 		});
 	}
 
-	render(ctx: CanvasRenderingContext2D): void {
-		super.render(ctx);
+	applyFill(ctx: CanvasRenderingContext2D): void {
 		ctx.fillStyle = this.fillStyle;
+	}
+}
+
+/**
+ * 円・楕円を表現するLayerクラス
+ * @date 2023/1/12 - 11:11:43
+ *
+ * @export
+ * @class Ellipse
+ * @typedef {Ellipse}
+ * @extends {Shape2D}
+ */
+export class Ellipse extends Shape2D {
+	rotation = 0;
+	startAngle = 0;
+	endAngle = 360;
+
+	constructor(id: number, name: string) {
+		super(id, name);
+		this.type = LayerTypeEnum.Ellipse;
+		this.pt = [
+			{ x: 0, y: 0 },
+			{ x: 0, y: 0 }
+		];
+	}
+
+	get x(): number {
+		return this.pt[0].x;
+	}
+	set x(value: number) {
+		this.pt[0].x = value;
+	}
+
+	get y(): number {
+		return this.pt[0].y;
+	}
+	set y(value: number) {
+		this.pt[0].y = value;
+	}
+
+	get radiusX(): number {
+		return this.pt[1].x;
+	}
+	set radiusX(value: number) {
+		this.pt[1].x = value;
+	}
+
+	get radiusY(): number {
+		return this.pt[1].y;
+	}
+	set radiusY(value: number) {
+		this.pt[1].y = value;
+	}
+
+	render(ctx: CanvasRenderingContext2D): void {
+		if (this.radiusX <= 0 || this.radiusY <= 0) {
+			console.log('x', this.x);
+			console.log('y', this.y);
+			console.log('rx', this.radiusX);
+			console.log('ry', this.radiusY);
+		} else {
+			this.applyShape(ctx);
+			this.applyFill(ctx);
+
+			ctx.beginPath();
+			ctx.moveTo(this.x, this.y);
+			ctx.ellipse(
+				this.x,
+				this.y,
+				this.radiusX,
+				this.radiusY,
+				(this.rotation * Math.PI) / 180,
+				(this.startAngle * Math.PI) / 180,
+				(this.endAngle * Math.PI) / 180,
+				true
+			);
+			if (this.bgAlpha > 0) {
+				ctx.fill();
+			}
+			if (this.lineWidth > 0) {
+				ctx.stroke();
+			}
+		}
 	}
 }
 
@@ -213,11 +313,10 @@ export class Rectangle extends Shape2D {
 			console.log('w', this.width);
 			console.log('h', this.height);
 		} else {
-			super.render(ctx);
+			this.applyShape(ctx);
+			this.applyFill(ctx);
 			ctx.fillRect(this.x, this.y, this.width, this.height);
-			if (this.lineWidth > 0) {
-				ctx.strokeRect(this.x, this.y, this.width, this.height);
-			}
+			ctx.strokeRect(this.x, this.y, this.width, this.height);
 		}
 	}
 }

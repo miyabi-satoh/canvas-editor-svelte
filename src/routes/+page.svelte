@@ -11,11 +11,21 @@
 		Checkbox,
 		Span
 	} from 'flowbite-svelte';
-	import { Layer, type LayerType, LayerTypeEnum, Rectangle, ClosePath, Line } from '../lib/layer';
+	import {
+		Layer,
+		type LayerType,
+		LayerTypeEnum,
+		Rectangle,
+		Line,
+		Shape,
+		Ellipse,
+		Shape2D
+	} from '../lib/layer';
 	import Icon from '@iconify/svelte';
 	import NumberInput from '../lib/NumberInput.svelte';
 	import ColorInput from '$lib/ColorInput.svelte';
 	import PropertyBlock from '$lib/PropertyBlock.svelte';
+	import { onMount } from 'svelte';
 
 	let elCanvas: HTMLCanvasElement | undefined = undefined;
 	let elDiv: HTMLDivElement | undefined = undefined;
@@ -187,6 +197,10 @@
 		}
 	}
 
+	onMount(() => {
+		handleClickAdd();
+	});
+
 	$: onChangeType(selectedLayerType);
 	function onChangeType(type: LayerType) {
 		console.log('onChangeType');
@@ -200,6 +214,14 @@
 					line.pt[0].y = Math.floor(canvasHeight / 2);
 					line.pt[1].y = line.pt[0].y;
 					current = line;
+					break;
+				case LayerTypeEnum.Ellipse:
+					let arc = new Ellipse(current.id, current.name);
+					arc.x = Math.floor(canvasWidth / 2);
+					arc.y = Math.floor(canvasHeight / 2);
+					arc.radiusX = canvasWidth - arc.x;
+					arc.radiusY = canvasHeight - arc.y;
+					current = arc;
 					break;
 				default:
 					let rect = new Rectangle(current.id, current.name);
@@ -411,7 +433,72 @@
 						</Span>
 					</PropertyBlock>
 				{/if}
-				{#if current instanceof Rectangle}
+				{#if current instanceof Ellipse}
+					<!-- 中心 -->
+					<PropertyBlock name="中心">
+						<div slot="props" class="ml-2 flex gap-2">
+							<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.x} />
+							<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.y} />
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							({current.x} , {current.y})
+						</Span>
+					</PropertyBlock>
+					<!-- 半径 -->
+					<PropertyBlock name="半径">
+						<div slot="props" class="ml-2 flex gap-2">
+							<NumberInput
+								label="X"
+								id="radius_x"
+								min="1"
+								max="2000"
+								bind:value={current.radiusX}
+							/>
+							<NumberInput
+								label="Y"
+								id="radius_y"
+								min="1"
+								max="2000"
+								bind:value={current.radiusY}
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							X={current.radiusX} , Y={current.radiusY}
+						</Span>
+					</PropertyBlock>
+					<!-- 傾きと角度 -->
+					<PropertyBlock name="傾きと角度">
+						<div slot="props" class="ml-2 flex flex-col gap-2">
+							<NumberInput
+								label="傾き"
+								id="rotation"
+								min="-360"
+								max="360"
+								bind:value={current.rotation}
+							/>
+							<div class="flex-1 flex gap-2">
+								<NumberInput
+									label="始角"
+									id="start_angle"
+									min="-360"
+									max="360"
+									bind:value={current.startAngle}
+								/>
+								<NumberInput
+									label="終角"
+									id="end_angle"
+									min="-360"
+									max="360"
+									bind:value={current.endAngle}
+								/>
+							</div>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							傾き={current.rotation}&deg; , 始角={current.startAngle}&deg; , 終角={current.endAngle}&deg;
+						</Span>
+					</PropertyBlock>
+				{/if}
+				{#if current instanceof Shape2D}
 					<!-- 塗りつぶし -->
 					<PropertyBlock name="塗りつぶし">
 						<div slot="props" class="ml-2">
@@ -421,7 +508,8 @@
 							{current.bgColor} / {current.bgAlpha}%
 						</Span>
 					</PropertyBlock>
-
+				{/if}
+				{#if current instanceof Rectangle}
 					<!-- サイズ -->
 					<PropertyBlock name="サイズ">
 						<div slot="props" class="ml-2 flex flex-col gap-1">
@@ -503,7 +591,7 @@
 						</Span>
 					</PropertyBlock>
 				{/if}
-				{#if current instanceof ClosePath}
+				{#if current instanceof Shape}
 					<!-- 線の色と太さ -->
 					<PropertyBlock name="線の色と太さ">
 						<div slot="props" class="ml-2">
