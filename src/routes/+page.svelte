@@ -19,15 +19,17 @@
 		Line,
 		Shape,
 		Ellipse,
-		Shape2D,
-		Polygon
+		Fillable,
+		Polygon,
+		Image
 	} from '../lib/layer';
 	import Icon from '@iconify/svelte';
 	import NumberInput from '../lib/NumberInput.svelte';
 	import ColorInput from '$lib/ColorInput.svelte';
 	import PropertyBlock from '$lib/PropertyBlock.svelte';
 	import { onMount } from 'svelte';
-	import Layout from './+layout.svelte';
+	import HAlignButtons from '$lib/HAlignButtons.svelte';
+	import VAlignButtons from '$lib/VAlignButtons.svelte';
 
 	let elCanvas: HTMLCanvasElement | undefined = undefined;
 	let elDiv: HTMLDivElement | undefined = undefined;
@@ -99,9 +101,7 @@
 		}
 		newId++;
 
-		let layer = new Rectangle(newId, `レイヤー#${newId}`);
-		layer.width = canvasWidth;
-		layer.height = canvasHeight;
+		let layer = new Rectangle(newId, `レイヤー#${newId}`, canvasWidth, canvasHeight);
 
 		layers = [layer, ...layers];
 		selectedLayerType = layer.type;
@@ -134,56 +134,6 @@
 		}
 	}
 
-	function handleClickAlignLeft() {
-		if (current instanceof Rectangle) {
-			current.x = 0;
-		}
-	}
-
-	function handleClickAlignCenter() {
-		if (current instanceof Rectangle) {
-			current.x = Math.floor((canvasWidth - current.width) / 2);
-		}
-	}
-
-	function handleClickAlignRight() {
-		if (current instanceof Rectangle) {
-			current.x = canvasWidth - current.width;
-		}
-	}
-
-	function handleClickAlignTop() {
-		if (current instanceof Rectangle) {
-			current.y = 0;
-		}
-	}
-
-	function handleClickAlignMiddle() {
-		if (current instanceof Rectangle) {
-			current.y = Math.floor((canvasHeight - current.height) / 2);
-		}
-	}
-
-	function handleClickAlignBottom() {
-		if (current instanceof Rectangle) {
-			current.y = canvasHeight - current.height;
-		}
-	}
-
-	function handleClickFitWidth() {
-		if (current instanceof Rectangle) {
-			current.x = 0;
-			current.width = canvasWidth;
-		}
-	}
-
-	function handleClickFitHeight() {
-		if (current instanceof Rectangle) {
-			current.y = 0;
-			current.height = canvasHeight;
-		}
-	}
-
 	function handleClickDownload() {
 		if (elCanvas && elAnchor) {
 			const a = elAnchor;
@@ -211,32 +161,23 @@
 			const index = layers.findIndex((layer) => layer.id == id);
 			switch (type) {
 				case LayerTypeEnum.Line:
-					let line = new Line(current.id, current.name);
-					line.pt[1].x = canvasWidth;
-					line.pt[0].y = Math.floor(canvasHeight / 2);
-					line.pt[1].y = line.pt[0].y;
+					let line = new Line(current.id, current.name, canvasWidth, canvasHeight);
 					current = line;
 					break;
 				case LayerTypeEnum.Ellipse:
-					let arc = new Ellipse(current.id, current.name);
-					arc.x = Math.floor(canvasWidth / 2);
-					arc.y = Math.floor(canvasHeight / 2);
-					arc.radiusX = canvasWidth - arc.x;
-					arc.radiusY = canvasHeight - arc.y;
+					let arc = new Ellipse(current.id, current.name, canvasWidth, canvasHeight);
 					current = arc;
 					break;
 				case LayerTypeEnum.Polygon:
-					let polygon = new Polygon(current.id, current.name);
-					polygon.pt[0].x = Math.floor(canvasWidth / 2);
-					polygon.pt[1].y = canvasHeight;
-					polygon.pt[2].x = canvasWidth;
-					polygon.pt[2].y = canvasHeight;
+					let polygon = new Polygon(current.id, current.name, canvasWidth, canvasHeight);
 					current = polygon;
 					break;
+				case LayerTypeEnum.Image:
+					let image = new Image(current.id, current.name, canvasWidth, canvasHeight);
+					current = image;
+					break;
 				default:
-					let rect = new Rectangle(current.id, current.name);
-					rect.width = canvasWidth;
-					rect.height = canvasHeight;
+					let rect = new Rectangle(current.id, current.name, canvasWidth, canvasHeight);
 					current = rect;
 					break;
 			}
@@ -397,7 +338,42 @@
 					<Label for="type">形状</Label>
 					<Select size="sm" id="type" class="flex-1" items={types} bind:value={selectedLayerType} />
 				</div>
-				{#if current instanceof Polygon}
+				{#if current instanceof Rectangle}
+					<!-- 座標 -->
+					<PropertyBlock name="座標">
+						<div slot="props" class="ml-2 flex flex-col gap-1">
+							<NumberInput label="左" id="left" min="-2000" max="2000" bind:value={current.left}>
+								<HAlignButtons bind:value={current.left} {canvasWidth} selfWidth={current.width} />
+							</NumberInput>
+							<NumberInput label="上" id="top" min="-2000" max="2000" bind:value={current.top}>
+								<VAlignButtons
+									bind:value={current.top}
+									{canvasHeight}
+									selfHeight={current.height}
+								/>
+							</NumberInput>
+							<NumberInput label="右" id="right" min="-2000" max="2000" bind:value={current.right}>
+								<HAlignButtons bind:value={current.right} {canvasWidth} selfWidth={current.width} />
+							</NumberInput>
+							<NumberInput
+								label="下"
+								id="bottom"
+								min="-2000"
+								max="2000"
+								bind:value={current.bottom}
+							>
+								<VAlignButtons
+									bind:value={current.bottom}
+									{canvasHeight}
+									selfHeight={current.height}
+								/>
+							</NumberInput>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							({current.left} , {current.top}) - ({current.right} , {current.bottom})
+						</Span>
+					</PropertyBlock>
+				{:else if current instanceof Polygon}
 					<!-- 頂点の数 -->
 					<PropertyBlock name="頂点の数">
 						<div slot="props" class="ml-2">
@@ -441,21 +417,25 @@
 				{#if current instanceof Line}
 					<!-- 始点 -->
 					<PropertyBlock name="始点">
-						<div slot="props" class="ml-2 flex gap-2">
+						<div slot="props" class="ml-2 flex flex-col gap-1">
 							<NumberInput
 								label="X"
 								id="x_from"
 								min="-2000"
 								max="2000"
 								bind:value={current.pt[0].x}
-							/>
+							>
+								<HAlignButtons bind:value={current.pt[0].x} {canvasWidth} />
+							</NumberInput>
 							<NumberInput
 								label="Y"
 								id="y_from"
 								min="-2000"
 								max="2000"
 								bind:value={current.pt[0].y}
-							/>
+							>
+								<VAlignButtons bind:value={current.pt[0].y} {canvasHeight} />
+							</NumberInput>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
 							({current.pt[0].x} , {current.pt[0].y})
@@ -505,9 +485,13 @@
 					</PropertyBlock>
 					<!-- 中心 -->
 					<PropertyBlock name="中心">
-						<div slot="props" class="ml-2 flex gap-2">
-							<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.x} />
-							<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.y} />
+						<div slot="props" class="ml-2 flex flex-col gap-1">
+							<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.x}>
+								<HAlignButtons bind:value={current.x} {canvasWidth} />
+							</NumberInput>
+							<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.y}>
+								<VAlignButtons bind:value={current.y} {canvasHeight} />
+							</NumberInput>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
 							({current.x} , {current.y})
@@ -567,7 +551,7 @@
 						</Span>
 					</PropertyBlock>
 				{/if}
-				{#if current instanceof Shape2D}
+				{#if current instanceof Fillable}
 					<!-- 塗りつぶし -->
 					<PropertyBlock name="塗りつぶし">
 						<div slot="props" class="ml-2">
@@ -575,88 +559,6 @@
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
 							{current.bgColor} / {current.bgAlpha}%
-						</Span>
-					</PropertyBlock>
-				{/if}
-				{#if current instanceof Rectangle}
-					<!-- サイズ -->
-					<PropertyBlock name="サイズ">
-						<div slot="props" class="ml-2 flex flex-col gap-1">
-							<div>
-								<NumberInput
-									labelClass="w-7"
-									label="幅"
-									id="width"
-									min="0"
-									max={canvasWidth * 2}
-									bind:value={current.width}
-								>
-									<button class="btn-icon ml-2" on:click={handleClickFitWidth}>
-										<Icon icon="mdi:arrow-expand-horizontal" height="auto" />
-									</button>
-									<Tooltip style="light">幅をキャンバスに合わせる</Tooltip>
-								</NumberInput>
-							</div>
-							<div>
-								<NumberInput
-									labelClass="w-7"
-									label="高さ"
-									id="height"
-									min="-2000"
-									max={canvasHeight * 2}
-									bind:value={current.height}
-								>
-									<button class="btn-icon ml-2" on:click={handleClickFitHeight}>
-										<Icon icon="mdi:arrow-expand-vertical" height="auto" />
-									</button>
-									<Tooltip style="light">高さをキャンバスに合わせる</Tooltip>
-								</NumberInput>
-							</div>
-							<Checkbox class="mt-1" bind:checked={fixedRatio}>縦横比を固定</Checkbox>
-						</div>
-						<Span slot="summary" class="font-normal text-sm">
-							{current.width} x {current.height}
-						</Span>
-					</PropertyBlock>
-
-					<!-- 位置 -->
-					<PropertyBlock name="位置">
-						<div slot="props" class="ml-2 flex flex-col gap-1">
-							<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.x}>
-								<div class="flex gap-3">
-									<button class="btn-icon" on:click={handleClickAlignLeft}>
-										<Icon icon="mdi:format-horizontal-align-left" height="auto" />
-									</button>
-									<Tooltip style="light">右寄せ</Tooltip>
-									<button class="btn-icon" on:click={handleClickAlignCenter}>
-										<Icon icon="mdi:format-horizontal-align-center" height="auto" />
-									</button>
-									<Tooltip style="light">中央寄せ</Tooltip>
-									<button class="btn-icon" on:click={handleClickAlignRight}>
-										<Icon icon="mdi:format-horizontal-align-right" height="auto" />
-									</button>
-									<Tooltip style="light">左寄せ</Tooltip>
-								</div>
-							</NumberInput>
-							<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.y}>
-								<div class="flex gap-3">
-									<button class="btn-icon" on:click={handleClickAlignTop}>
-										<Icon icon="mdi:format-vertical-align-top" height="auto" />
-									</button>
-									<Tooltip style="light">上寄せ</Tooltip>
-									<button class="btn-icon" on:click={handleClickAlignMiddle}>
-										<Icon icon="mdi:format-vertical-align-center" height="auto" />
-									</button>
-									<Tooltip style="light">中央寄せ</Tooltip>
-									<button class="btn-icon" on:click={handleClickAlignBottom}>
-										<Icon icon="mdi:format-vertical-align-bottom" height="auto" />
-									</button>
-									<Tooltip style="light">下寄せ</Tooltip>
-								</div>
-							</NumberInput>
-						</div>
-						<Span slot="summary" class="font-normal text-sm">
-							({current.x} , {current.y})
 						</Span>
 					</PropertyBlock>
 				{/if}

@@ -104,6 +104,25 @@ export abstract class Shape extends Layer {
 abstract class ClosePath extends Shape {
 	pt: Array<{ x: number; y: number }> = [];
 
+	constructor(id: number, name: string, width: number, height: number) {
+		super(id, name);
+		this.numOfVertices = 2;
+		this.pt[1] = { x: width, y: height };
+	}
+
+	get numOfVertices(): number {
+		return this.pt.length;
+	}
+	set numOfVertices(value: number) {
+		if (this.pt.length > value) {
+			this.pt = this.pt.slice(0, value);
+		} else {
+			for (let i = this.pt.length; i < value; i++) {
+				this.pt.push({ x: 0, y: 0 });
+			}
+		}
+	}
+
 	applyPath(ctx: CanvasRenderingContext2D): void {
 		if (this.pt.length >= 2) {
 			ctx.beginPath();
@@ -127,14 +146,10 @@ abstract class ClosePath extends Shape {
  * @extends {ClosePath}
  */
 export class Line extends ClosePath {
-	constructor(id: number, name: string) {
-		super(id, name);
+	constructor(id: number, name: string, width: number, height: number) {
+		super(id, name, width, height);
 		this.type = LayerTypeEnum.Line;
 		this.lineWidth = 1;
-		this.pt = [
-			{ x: 0, y: 0 },
-			{ x: 0, y: 0 }
-		];
 	}
 
 	render(ctx: CanvasRenderingContext2D): void {
@@ -148,16 +163,71 @@ export class Line extends ClosePath {
 	}
 }
 
+export abstract class Rect extends ClosePath {
+	get x(): number {
+		return this.pt[0].x;
+	}
+	set x(value: number) {
+		const width = this.width;
+		this.pt[0].x = value;
+		this.pt[1].x = value + width;
+	}
+
+	get y(): number {
+		return this.pt[0].y;
+	}
+	set y(value: number) {
+		const height = this.height;
+		this.pt[0].y = value;
+		this.pt[1].y = value + height;
+	}
+
+	get width(): number {
+		return this.pt[1].x - this.pt[0].x;
+	}
+	set width(value: number) {
+		this.pt[1].x = this.pt[0].x + value;
+	}
+
+	get height(): number {
+		return this.pt[1].y - this.pt[0].y;
+	}
+	set height(value: number) {
+		this.pt[1].y = this.pt[0].y + value;
+	}
+}
+
+export class Image extends Rect {
+	image: HTMLImageElement;
+
+	constructor(id: number, name: string, width: number, height: number) {
+		super(id, name, width, height);
+		this.type = LayerTypeEnum.Image;
+		this.image = document.createElement('img');
+	}
+
+	render(ctx: CanvasRenderingContext2D): void {
+		if (this.pt.length != 2) {
+			throw new Error(`pt length ${this.pt.length}`);
+		} else {
+			this.applyShape(ctx);
+			this.applyPath(ctx);
+			ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+			ctx.stroke();
+		}
+	}
+}
+
 /**
  * 塗りつぶし可能なLayerクラス
  * @date 2023/1/10 - 23:22:44
  *
  * @export
- * @class Shape2D
- * @typedef {Shape2D}
- * @extends {ClosePath}
+ * @class Fillable
+ * @typedef {Fillable}
+ * @extends {Rect}
  */
-export abstract class Shape2D extends ClosePath {
+export abstract class Fillable extends Rect {
 	bgColor = '#ffffff';
 	bgAlpha = 100;
 
@@ -180,49 +250,35 @@ export abstract class Shape2D extends ClosePath {
  * @export
  * @class Ellipse
  * @typedef {Ellipse}
- * @extends {Shape2D}
+ * @extends {Fillable}
  */
-export class Ellipse extends Shape2D {
+export class Ellipse extends Fillable {
 	rotation = 0;
 	startAngle = 0;
 	endAngle = 360;
 	moveToCenter = 1;
 
-	constructor(id: number, name: string) {
-		super(id, name);
+	constructor(id: number, name: string, width: number, height: number) {
+		super(id, name, width, height);
 		this.type = LayerTypeEnum.Ellipse;
-		this.pt = [
-			{ x: 0, y: 0 },
-			{ x: 0, y: 0 }
-		];
-	}
-
-	get x(): number {
-		return this.pt[0].x;
-	}
-	set x(value: number) {
-		this.pt[0].x = value;
-	}
-
-	get y(): number {
-		return this.pt[0].y;
-	}
-	set y(value: number) {
-		this.pt[0].y = value;
+		this.x = Math.floor(width / 2);
+		this.y = Math.floor(height / 2);
+		this.radiusX = width - this.x;
+		this.radiusY = height - this.y;
 	}
 
 	get radiusX(): number {
-		return this.pt[1].x;
+		return this.width;
 	}
 	set radiusX(value: number) {
-		this.pt[1].x = value;
+		this.width = value;
 	}
 
 	get radiusY(): number {
-		return this.pt[1].y;
+		return this.height;
 	}
 	set radiusY(value: number) {
-		this.pt[1].y = value;
+		this.height = value;
 	}
 
 	render(ctx: CanvasRenderingContext2D): void {
@@ -261,87 +317,23 @@ export class Ellipse extends Shape2D {
 }
 
 /**
- * 四角形を描画するクラス
- * @date 2023/1/10 - 23:25:36
+ * 多角形を表現するLayerクラス
+ * @date 2023/1/12 - 23:12:22
  *
  * @export
- * @class Rectangle
- * @typedef {Rectangle}
- * @extends {Shape2D}
+ * @class Polygon
+ * @typedef {Polygon}
+ * @extends {Fillable}
  */
-export class Rectangle extends Shape2D {
-	constructor(id: number, name: string) {
-		super(id, name);
-		this.type = LayerTypeEnum.Rectangle;
-		this.pt = [
-			{ x: 0, y: 0 },
-			{ x: 0, y: 0 }
-		];
-	}
-
-	get x(): number {
-		return this.pt[0].x;
-	}
-	set x(value: number) {
-		this.pt[0].x = value;
-	}
-
-	get y(): number {
-		return this.pt[0].y;
-	}
-	set y(value: number) {
-		this.pt[0].y = value;
-	}
-
-	get width(): number {
-		return this.pt[1].x - this.pt[0].x;
-	}
-	set width(value: number) {
-		this.pt[1].x = this.pt[0].x + value;
-	}
-
-	get height(): number {
-		return this.pt[1].y - this.pt[0].y;
-	}
-	set height(value: number) {
-		this.pt[1].y = this.pt[0].y + value;
-	}
-
-	render(ctx: CanvasRenderingContext2D): void {
-		if (this.pt.length != 2) {
-			throw new Error(`pt.length == ${this.pt.length}`);
-		}
-		if (this.width <= 0 || this.height <= 0) {
-			console.log('x', this.x);
-			console.log('y', this.y);
-			console.log('w', this.width);
-			console.log('h', this.height);
-		} else {
-			this.applyShape(ctx);
-			this.applyFill(ctx);
-			ctx.fillRect(this.x, this.y, this.width, this.height);
-			ctx.strokeRect(this.x, this.y, this.width, this.height);
-		}
-	}
-}
-
-export class Polygon extends Shape2D {
-	constructor(id: number, name: string) {
-		super(id, name);
+export class Polygon extends Fillable {
+	constructor(id: number, name: string, width: number, height: number) {
+		super(id, name, width, height);
 		this.type = LayerTypeEnum.Polygon;
-		this.pt = [
-			{ x: 0, y: 0 },
-			{ x: 0, y: 0 },
-			{ x: 0, y: 0 }
-		];
-	}
-
-	get numOfVertices(): number {
-		return this.pt.length;
-	}
-	set numOfVertices(value: number) {
-		this.pt.length = value;
-		console.log(value, this.pt.length);
+		this.numOfVertices = 3;
+		this.pt[0].x = Math.floor(width / 2);
+		this.pt[1].y = height;
+		this.pt[2].x = width;
+		this.pt[2].y = height;
 	}
 
 	render(ctx: CanvasRenderingContext2D): void {
@@ -357,5 +349,54 @@ export class Polygon extends Shape2D {
 		if (this.lineWidth > 0) {
 			ctx.stroke();
 		}
+	}
+}
+
+/**
+ * 四角形を描画するクラス
+ * @date 2023/1/10 - 23:25:36
+ *
+ * @export
+ * @class Rectangle
+ * @typedef {Rectangle}
+ * @extends {Polygon}
+ */
+export class Rectangle extends Polygon {
+	constructor(id: number, name: string, width: number, height: number) {
+		super(id, name, width, height);
+		this.type = LayerTypeEnum.Rectangle;
+		this.numOfVertices = 4;
+		this.left = 0;
+		this.top = 0;
+		this.right = width;
+		this.bottom = height;
+	}
+
+	get left(): number {
+		return this.pt[0].x;
+	}
+	set left(value: number) {
+		this.pt[0].x = this.pt[1].x = value;
+	}
+
+	get top(): number {
+		return this.pt[0].y;
+	}
+	set top(value: number) {
+		this.pt[0].y = this.pt[3].y = value;
+	}
+
+	get right(): number {
+		return this.pt[2].x;
+	}
+	set right(value: number) {
+		this.pt[2].x = this.pt[3].x = value;
+	}
+
+	get bottom(): number {
+		return this.pt[2].y;
+	}
+	set bottom(value: number) {
+		this.pt[1].y = this.pt[2].y = value;
 	}
 }
