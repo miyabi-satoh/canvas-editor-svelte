@@ -34,4 +34,10 @@
 		@apply border-0 cursor-pointer;
 		background: none;
 	}
+
+	img.selected-image {
+		@apply h-24 cursor-pointer rounded-lg border-2
+      border-gray-300 dark:border-gray-600
+      dark:hover:border-gray-500 dark:hover:bg-gray-600;
+	}
 }
