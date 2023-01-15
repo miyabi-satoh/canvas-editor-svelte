@@ -400,6 +400,24 @@
 								bind:value={current.family}
 								placeholder="フォントファミリーを選択"
 							/>
+							<Select
+								size="sm"
+								placeholder="太さを選択"
+								bind:value={current.weight}
+								items={[
+									{ value: 100, name: '100' },
+									{ value: 200, name: '200' },
+									{ value: 300, name: '300' },
+									{ value: 400, name: '400(normal)' },
+									{ value: 500, name: '500' },
+									{ value: 600, name: '600' },
+									{ value: 700, name: '700(bold)' },
+									{ value: 800, name: '800' },
+									{ value: 900, name: '900' }
+								]}
+							/>
+							<NumberInput label="サイズ" id="size" min="1" max="2000" bind:value={current.size} />
+							<Checkbox bind:checked={current.isItalic}>斜体</Checkbox>
 						</div>
 						<Span slot="summary" class="font-normal text-sm truncate">
 							{current.font}
@@ -457,7 +475,7 @@
 						</div>
 						<Span slot="summary" class="font-normal text-sm truncate">
 							{current.align}, {current.baseline}
-							({current.x}, {current.y}) / {current.maxWidth}px
+							({current.x}, {current.y}) {current.maxWidth}px
 						</Span>
 					</PropertyBlock>
 				{:else if current instanceof ImageData}
