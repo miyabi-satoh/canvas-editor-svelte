@@ -9,7 +9,8 @@
 		Select,
 		Tooltip,
 		Checkbox,
-		Span
+		Span,
+		Dropzone
 	} from 'flowbite-svelte';
 	import {
 		Layer,
@@ -17,44 +18,36 @@
 		LayerTypeEnum,
 		Rectangle,
 		Line,
-		Shape,
 		Ellipse,
-		Fillable,
 		Polygon,
-		Image
-	} from '../lib/layer';
+		ImageData,
+		TextData,
+		newLayer
+	} from '$lib/layer';
 	import Icon from '@iconify/svelte';
-	import NumberInput from '../lib/NumberInput.svelte';
+	import NumberInput from '$lib/NumberInput.svelte';
 	import ColorInput from '$lib/ColorInput.svelte';
 	import PropertyBlock from '$lib/PropertyBlock.svelte';
 	import { onMount } from 'svelte';
 	import HAlignButtons from '$lib/HAlignButtons.svelte';
 	import VAlignButtons from '$lib/VAlignButtons.svelte';
+	import { families, textAligns, textBaselines, types } from '$lib/constants';
 
-	let elCanvas: HTMLCanvasElement | undefined = undefined;
-	let elDiv: HTMLDivElement | undefined = undefined;
-	let elAnchor: HTMLAnchorElement | undefined = undefined;
+	let elCanvas: HTMLCanvasElement;
+	let elDiv: HTMLDivElement;
+	let elAnchor: HTMLAnchorElement;
 	let elScrollTo: HTMLElement;
+	let elDropZone: Dropzone;
 	let canvasWidth = 1200;
 	let canvasHeight = 630;
-	let canvasData: string | undefined = undefined;
-	let updateTimerId: number | undefined = undefined;
+	let canvasData: string;
+	let updateTimerId: number | undefined;
 	let imgMaxHeight = 'inherit';
 	let layers: Layer[] = [];
 	let selectedLayerId = -1;
 	let current: Layer | undefined;
-	let fixedRatio = true;
 	let autoPreviewUpdate = true;
 	let selectedLayerType: LayerType;
-
-	const types = [
-		{ value: LayerTypeEnum.Line, name: '直線' },
-		{ value: LayerTypeEnum.Rectangle, name: '矩形' },
-		{ value: LayerTypeEnum.Ellipse, name: '円・楕円' },
-		{ value: LayerTypeEnum.Polygon, name: '多角形' },
-		{ value: LayerTypeEnum.Text, name: '文字' },
-		{ value: LayerTypeEnum.Image, name: '画像' }
-	];
 
 	function updatePreview() {
 		if (elCanvas) {
@@ -149,6 +142,71 @@
 		}
 	}
 
+	function handleChangeFile(e: Event) {
+		try {
+			const target = e.target as HTMLInputElement;
+			const file = (target.files as FileList)[0];
+			if (!file.type.includes('image/')) {
+				throw new Error('selected file is not image');
+			}
+			const reader = new FileReader();
+
+			reader.onload = () => {
+				if (current instanceof ImageData) {
+					current.elImage.src = reader.result as string;
+					current.fileName = file.name;
+
+					current.rect.x = current.rect.y = 0;
+					current.rect.width = current.elImage.naturalWidth;
+					current.rect.height = current.elImage.naturalHeight;
+				}
+			};
+			reader.readAsDataURL(file);
+		} catch (err) {
+			console.log(err);
+		}
+	}
+
+	function handleClickFitCanvasWidth() {
+		if (current instanceof ImageData) {
+			current.rect.width = canvasWidth;
+			if (current.fixedRatio) {
+				const nw = current.elImage.naturalWidth;
+				const nh = current.elImage.naturalHeight;
+				current.rect.height = Math.floor((nh * canvasWidth) / nw);
+			}
+		}
+	}
+
+	function handleClickFitCanvasHeight() {
+		if (current instanceof ImageData) {
+			current.rect.height = canvasHeight;
+			if (current.fixedRatio) {
+				const nw = current.elImage.naturalWidth;
+				const nh = current.elImage.naturalHeight;
+				current.rect.width = Math.floor((nw * canvasHeight) / nh);
+			}
+		}
+	}
+
+	function handleClickTextAlign(e: CustomEvent<{ align: string }>) {
+		if (current instanceof TextData) {
+			if (e.detail.align == 'left') {
+				current.align = 'left';
+			} else if (e.detail.align == 'center') {
+				current.align = 'center';
+			} else if (e.detail.align == 'right') {
+				current.align = 'right';
+			} else if (e.detail.align == 'top') {
+				current.baseline = 'top';
+			} else if (e.detail.align == 'middle') {
+				current.baseline = 'middle';
+			} else if (e.detail.align == 'bottom') {
+				current.baseline = 'bottom';
+			}
+		}
+	}
+
 	onMount(() => {
 		handleClickAdd();
 	});
@@ -158,29 +216,9 @@
 		console.log('onChangeType');
 		if (current && current.type != type) {
 			const id = current.id;
+			current = newLayer(type, id, current.name, canvasWidth, canvasHeight);
+
 			const index = layers.findIndex((layer) => layer.id == id);
-			switch (type) {
-				case LayerTypeEnum.Line:
-					let line = new Line(current.id, current.name, canvasWidth, canvasHeight);
-					current = line;
-					break;
-				case LayerTypeEnum.Ellipse:
-					let arc = new Ellipse(current.id, current.name, canvasWidth, canvasHeight);
-					current = arc;
-					break;
-				case LayerTypeEnum.Polygon:
-					let polygon = new Polygon(current.id, current.name, canvasWidth, canvasHeight);
-					current = polygon;
-					break;
-				case LayerTypeEnum.Image:
-					let image = new Image(current.id, current.name, canvasWidth, canvasHeight);
-					current = image;
-					break;
-				default:
-					let rect = new Rectangle(current.id, current.name, canvasWidth, canvasHeight);
-					current = rect;
-					break;
-			}
 			layers[index] = current;
 		}
 	}
@@ -336,41 +374,121 @@
 				<!-- type -->
 				<div class="flex items-center gap-2 mt-2">
 					<Label for="type">形状</Label>
-					<Select size="sm" id="type" class="flex-1" items={types} bind:value={selectedLayerType} />
+					<Select
+						size="sm"
+						id="type"
+						class="flex-1"
+						items={types}
+						bind:value={selectedLayerType}
+						placeholder="レイヤーの形状を選択"
+					/>
 				</div>
-				{#if current instanceof Rectangle}
-					<!-- 座標 -->
-					<PropertyBlock name="座標">
+
+				<!-- クラス固有のプロパティ -->
+				{#if current instanceof TextData}
+					<!-- テキスト -->
+					<div class="flex items-center gap-2 mt-2">
+						<Label for="text">テキスト</Label>
+						<Input size="sm" id="text" class="flex-1" bind:value={current.text} />
+					</div>
+					<!-- フォント -->
+					<PropertyBlock name="フォント">
 						<div slot="props" class="ml-2 flex flex-col gap-1">
-							<NumberInput label="左" id="left" min="-2000" max="2000" bind:value={current.left}>
-								<HAlignButtons bind:value={current.left} {canvasWidth} selfWidth={current.width} />
-							</NumberInput>
-							<NumberInput label="上" id="top" min="-2000" max="2000" bind:value={current.top}>
-								<VAlignButtons
-									bind:value={current.top}
-									{canvasHeight}
-									selfHeight={current.height}
+							<Select
+								size="sm"
+								items={families}
+								bind:value={current.family}
+								placeholder="フォントファミリーを選択"
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm truncate">
+							{current.font}
+						</Span>
+					</PropertyBlock>
+					<!-- 配置 -->
+					<PropertyBlock name="配置">
+						<div slot="props" class="ml-2 flex flex-col gap-1">
+							<Select
+								size="sm"
+								items={textAligns}
+								bind:value={current.align}
+								placeholder="水平方向の配置を選択"
+							/>
+							<Select
+								id="baseline"
+								size="sm"
+								items={textBaselines}
+								bind:value={current.baseline}
+								placeholder="垂直方向の配置を選択"
+							/>
+							<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.x}>
+								<HAlignButtons
+									bind:value={current.x}
+									{canvasWidth}
+									on:click={handleClickTextAlign}
 								/>
 							</NumberInput>
-							<NumberInput label="右" id="right" min="-2000" max="2000" bind:value={current.right}>
-								<HAlignButtons bind:value={current.right} {canvasWidth} selfWidth={current.width} />
+							<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.y}>
+								<VAlignButtons
+									bind:value={current.y}
+									{canvasHeight}
+									on:click={handleClickTextAlign}
+								/>
 							</NumberInput>
 							<NumberInput
-								label="下"
-								id="bottom"
-								min="-2000"
+								label="最大幅"
+								id="max_width"
+								min="0"
 								max="2000"
-								bind:value={current.bottom}
+								bind:value={current.maxWidth}
 							>
-								<VAlignButtons
-									bind:value={current.bottom}
-									{canvasHeight}
-									selfHeight={current.height}
-								/>
+								<button
+									class="btn-icon"
+									on:click={() => {
+										if (current instanceof TextData) {
+											current.maxWidth = canvasWidth;
+										}
+									}}
+								>
+									<Icon icon="mdi:arrow-expand-horizontal" height="auto" />
+								</button>
+								<Tooltip style="light">幅をキャンバスに合わせる</Tooltip>
 							</NumberInput>
 						</div>
-						<Span slot="summary" class="font-normal text-sm">
-							({current.left} , {current.top}) - ({current.right} , {current.bottom})
+						<Span slot="summary" class="font-normal text-sm truncate">
+							{current.align}, {current.baseline}
+							({current.x}, {current.y}) / {current.maxWidth}px
+						</Span>
+					</PropertyBlock>
+				{:else if current instanceof ImageData}
+					<!-- 画像 -->
+					<PropertyBlock name="画像">
+						<div slot="props" class="ml-2 flex">
+							<button on:click={() => document.getElementById('dropzone')?.click()}>
+								<img
+									src={current.elImage.src}
+									alt="selected"
+									class={current.elImage.src ? 'selected-image' : 'hidden'}
+								/>
+							</button>
+							<Dropzone
+								id="dropzone"
+								bind:this={elDropZone}
+								accept="image/*"
+								class="!h-24 {current.elImage.src ? 'hidden' : ''}"
+								on:change={handleChangeFile}
+							>
+								<div class="mb-2 text-gray-400">
+									<Icon icon="mdi:upload" height="auto" />
+								</div>
+								<p class="text-center mb-2 text-sm text-gray-500 dark:text-gray-400">
+									画像ファイルをドロップ<br />
+									またはクリックしてファイルを選択
+								</p>
+							</Dropzone>
+						</div>
+						<Span slot="summary" class="font-normal text-sm truncate">
+							{current.fileName}
 						</Span>
 					</PropertyBlock>
 				{:else if current instanceof Polygon}
@@ -382,15 +500,15 @@
 								id="num_of_vertices"
 								min="3"
 								max="12"
-								bind:value={current.numOfVertices}
+								bind:value={current.paths.count}
 							/>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
-							{current.numOfVertices}
+							{current.paths.count}
 						</Span>
 					</PropertyBlock>
 					<!-- 頂点 -->
-					{#each current.pt as pt, index}
+					{#each current.paths.pt as pt, index}
 						<PropertyBlock name="頂点{index + 1}">
 							<div slot="props" class="ml-2 flex gap-2">
 								<NumberInput
@@ -398,23 +516,22 @@
 									id="x_{index}"
 									min="-2000"
 									max="2000"
-									bind:value={current.pt[index].x}
+									bind:value={current.paths.pt[index].x}
 								/>
 								<NumberInput
 									label="Y"
 									id="y_{index}"
 									min="-2000"
 									max="2000"
-									bind:value={current.pt[index].y}
+									bind:value={current.paths.pt[index].y}
 								/>
 							</div>
 							<Span slot="summary" class="font-normal text-sm">
-								({current.pt[index].x} , {current.pt[index].y})
+								({current.paths.pt[index].x} , {current.paths.pt[index].y})
 							</Span>
 						</PropertyBlock>
 					{/each}
-				{/if}
-				{#if current instanceof Line}
+				{:else if current instanceof Line}
 					<!-- 始点 -->
 					<PropertyBlock name="始点">
 						<div slot="props" class="ml-2 flex flex-col gap-1">
@@ -423,22 +540,22 @@
 								id="x_from"
 								min="-2000"
 								max="2000"
-								bind:value={current.pt[0].x}
+								bind:value={current.paths.pt[0].x}
 							>
-								<HAlignButtons bind:value={current.pt[0].x} {canvasWidth} />
+								<HAlignButtons bind:value={current.paths.pt[0].x} {canvasWidth} />
 							</NumberInput>
 							<NumberInput
 								label="Y"
 								id="y_from"
 								min="-2000"
 								max="2000"
-								bind:value={current.pt[0].y}
+								bind:value={current.paths.pt[0].y}
 							>
-								<VAlignButtons bind:value={current.pt[0].y} {canvasHeight} />
+								<VAlignButtons bind:value={current.paths.pt[0].y} {canvasHeight} />
 							</NumberInput>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
-							({current.pt[0].x} , {current.pt[0].y})
+							({current.paths.pt[0].x} , {current.paths.pt[0].y})
 						</Span>
 					</PropertyBlock>
 					<!-- 終点 -->
@@ -449,22 +566,21 @@
 								id="x_to"
 								min="-2000"
 								max="2000"
-								bind:value={current.pt[1].x}
+								bind:value={current.paths.pt[1].x}
 							/>
 							<NumberInput
 								label="Y"
 								id="y_to"
 								min="-2000"
 								max="2000"
-								bind:value={current.pt[1].y}
+								bind:value={current.paths.pt[1].y}
 							/>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
-							({current.pt[1].x} , {current.pt[1].y})
+							({current.paths.pt[1].x} , {current.paths.pt[1].y})
 						</Span>
 					</PropertyBlock>
-				{/if}
-				{#if current instanceof Ellipse}
+				{:else if current instanceof Ellipse}
 					<!-- 描画方法 -->
 					<PropertyBlock name="描画方法">
 						<div slot="props" class="ml-2">
@@ -477,6 +593,7 @@
 									{ value: 1, name: '半径を描く' },
 									{ value: 0, name: '弦を描く' }
 								]}
+								placeholder="描画方法を選択"
 							/>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
@@ -551,72 +668,134 @@
 						</Span>
 					</PropertyBlock>
 				{/if}
-				{#if current instanceof Fillable}
-					<!-- 塗りつぶし -->
-					<PropertyBlock name="塗りつぶし">
-						<div slot="props" class="ml-2">
-							<ColorInput id="bg_color" bind:color={current.bgColor} bind:alpha={current.bgAlpha} />
+
+				<!-- 共通プロパティ -->
+				{#if current.rect !== undefined}
+					<!-- 位置とサイズ -->
+					<PropertyBlock name="位置とサイズ">
+						<div slot="props" class="ml-2 flex flex-col gap-1">
+							<NumberInput label="X" id="x" min="-2000" max="2000" bind:value={current.rect.x}>
+								<HAlignButtons
+									bind:value={current.rect.x}
+									{canvasWidth}
+									selfWidth={current.rect.width}
+								/>
+							</NumberInput>
+							<NumberInput label="Y" id="y" min="-2000" max="2000" bind:value={current.rect.y}>
+								<VAlignButtons
+									bind:value={current.rect.y}
+									{canvasHeight}
+									selfHeight={current.rect.height}
+								/>
+							</NumberInput>
+							<NumberInput
+								labelClass="w-7"
+								label="幅"
+								id="width"
+								min="0"
+								max="2000"
+								bind:value={current.rect.width}
+							>
+								<button class="btn-icon" on:click={handleClickFitCanvasWidth}>
+									<Icon icon="mdi:arrow-expand-horizontal" height="auto" />
+								</button>
+								<Tooltip style="light">幅をキャンバスに合わせる</Tooltip>
+							</NumberInput>
+							<NumberInput
+								labelClass="w-7"
+								label="高さ"
+								id="height"
+								min="0"
+								max="2000"
+								bind:value={current.rect.height}
+							>
+								<button class="btn-icon" on:click={handleClickFitCanvasHeight}>
+									<Icon icon="mdi:arrow-expand-vertical" height="auto" />
+								</button>
+								<Tooltip style="light">幅をキャンバスに合わせる</Tooltip>
+							</NumberInput>
+							{#if current instanceof ImageData}
+								<Checkbox bind:checked={current.fixedRatio}>縦横比を固定</Checkbox>
+							{/if}
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
-							{current.bgColor} / {current.bgAlpha}%
+							({current.rect.x} , {current.rect.y}) - ({current.rect.width} , {current.rect.height})
 						</Span>
 					</PropertyBlock>
 				{/if}
-				{#if current instanceof Shape}
+				{#if current.strokeOption !== undefined}
 					<!-- 線の色と太さ -->
 					<PropertyBlock name="線の色と太さ">
 						<div slot="props" class="ml-2">
 							<ColorInput
 								id="border_color"
-								bind:color={current.lineColor}
-								bind:alpha={current.lineAlpha}
+								bind:color={current.strokeOption.color}
+								bind:alpha={current.strokeOption.alpha}
 							/>
 							<NumberInput
 								label="太さ"
 								id="border_width"
 								min={current instanceof Line ? 1 : 0}
 								max={Math.ceil(Math.sqrt(canvasWidth ** 2 + canvasHeight ** 2))}
-								bind:value={current.lineWidth}
+								bind:value={current.strokeOption.width}
 							/>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
-							{current.lineWidth}px {current.lineColor} / {current.lineAlpha}%
+							{current.strokeOption.width}px {current.strokeOption.color} / {current.strokeOption
+								.alpha}%
 						</Span>
 					</PropertyBlock>
-
+				{/if}
+				{#if current.fillOption !== undefined}
+					<!-- 塗りつぶし -->
+					<PropertyBlock name="塗りつぶし">
+						<div slot="props" class="ml-2">
+							<ColorInput
+								id="bg_color"
+								bind:color={current.fillOption.color}
+								bind:alpha={current.fillOption.alpha}
+							/>
+						</div>
+						<Span slot="summary" class="font-normal text-sm">
+							{current.fillOption.color} / {current.fillOption.alpha}%
+						</Span>
+					</PropertyBlock>
+				{/if}
+				{#if current.shadowOption !== undefined}
 					<!-- シャドウ -->
 					<PropertyBlock name="影">
 						<div slot="props" class="ml-2 flex flex-col gap-1">
 							<ColorInput
 								id="shadow_color"
-								bind:color={current.shadowColor}
-								bind:alpha={current.shadowAlpha}
+								bind:color={current.shadowOption.color}
+								bind:alpha={current.shadowOption.alpha}
 							/>
 							<NumberInput
 								label="ぼかし"
 								id="shadow_blur"
 								min="0"
 								max="100"
-								bind:value={current.shadowBlur}
+								bind:value={current.shadowOption.blur}
 							/>
 							<NumberInput
 								label="水平方向のオフセット"
 								id="shadow_offset_x"
 								min="-100"
 								max="100"
-								bind:value={current.shadowOffsetX}
+								bind:value={current.shadowOption.offsetX}
 							/>
 							<NumberInput
 								label="垂直方向のオフセット"
 								id="shadow_offset_y"
 								min="-100"
 								max="100"
-								bind:value={current.shadowOffsetY}
+								bind:value={current.shadowOption.offsetY}
 							/>
 						</div>
 						<Span slot="summary" class="font-normal text-sm">
-							{current.shadowBlur}px ({current.shadowOffsetX} , {current.shadowOffsetY})
-							{current.shadowColor} / {current.shadowAlpha}%
+							{current.shadowOption.blur}px ({current.shadowOption.offsetX} , {current.shadowOption
+								.offsetY})
+							{current.shadowOption.color} / {current.shadowOption.alpha}%
 						</Span>
 					</PropertyBlock>
 				{/if}
