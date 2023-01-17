@@ -16,20 +16,15 @@
 	<title>Canvas Editor</title>
 </svelte:head>
 <div class="h-screen flex flex-col">
-	<Navbar let:hidden let:toggle>
+	<Navbar>
 		<NavBrand href="/">
 			<span class="self-center whitespace-nowrap text-xl font-semibold dark:text-white">
-				Canvas Editor
+				Canvas Editor v2
 			</span>
 		</NavBrand>
-		<div class="flex md:order-2">
+		<div class="flex">
 			<DarkMode />
-			<NavHamburger on:click={toggle} />
 		</div>
-		<NavUl {hidden} class="order-1">
-			<NavLi href="/" active={true}>Home</NavLi>
-			<NavLi href="/about">About</NavLi>
-		</NavUl>
 	</Navbar>
 	<main class="flex flex-1 min-h-0 border-y border-slate-500 justify-center">
 		<div class="flex container">
