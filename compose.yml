@@ -1,0 +1,17 @@
+# networks:
+#   proxy_network:
+#     external: true
+
+services:
+  node:
+    build: .
+    container_name: canvas-editor
+    ports:
+      - 3001:3001
+    # networks:
+    #   - proxy_network
+    restart: always
+    logging:
+      options:
+        max-size: 5m
+        max-file: "10"

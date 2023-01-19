@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+	.preview {
+		background-image: conic-gradient(
+			#fff 0deg 90deg,
+			#ddd 90deg 180deg,
+			#fff 180deg 270deg,
+			#ddd 270deg 360deg
+		);
+		background-size: 16px 16px;
+	}
+
+	button.btn-icon {
+		@apply cursor-pointer flex
+    active:bg-gray-400 
+    text-gray-900 dark:text-gray-500
+    hover:text-blue-700 dark:hover:text-white;
+	}
+
+	button.btn-danger {
+		@apply hover:text-red-600  dark:hover:text-red-700;
+	}
+
+	button[disabled].btn-icon {
+		@apply cursor-not-allowed flex
+    active:bg-inherit
+    text-gray-400 dark:text-gray-700;
+	}
+
+	input[type='color'] {
+		@apply border-0 cursor-pointer;
+		background: none;
+	}
+
+	img.selected-image {
+		@apply h-24 cursor-pointer rounded-lg border-2
+      border-gray-300 dark:border-gray-600
+      dark:hover:border-gray-500 dark:hover:bg-gray-600;
+	}
+}
