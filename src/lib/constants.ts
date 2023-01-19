@@ -10,9 +10,10 @@ export const types: Array<{ value: LayerType; name: string }> = [
 ];
 
 interface FontFamilyOption {
-	value: string;
 	name: string;
-	href?: string;
+	value: string;
+	css?: string;
+	url?: string;
 }
 
 export const families: Array<FontFamilyOption> = [
@@ -86,49 +87,55 @@ export const families: Array<FontFamilyOption> = [
 	{ name: 'Trebuchet MS', value: `'Trebuchet MS'` },
 	{ name: 'Verdana', value: `'Verdana'` },
 	{
-		name: 'M PLUS 1p(Google Fonts)',
+		name: 'M PLUS 1p',
 		value: '"M PLUS 1p"',
-		href: 'https://fonts.googleapis.com/css?family=M+PLUS+1p'
+		url: 'https://fonts.googleapis.com/css?family=M+PLUS+1p'
 	},
 	{
-		name: 'M PLUS Rounded 1c(Google Fonts)',
+		name: 'M PLUS Rounded 1c',
 		value: '"M PLUS Rounded 1c"',
-		href: 'https://fonts.googleapis.com/css?family=M+PLUS+Rounded+1c'
+		url: 'https://fonts.googleapis.com/css?family=M+PLUS+Rounded+1c'
 	},
 	{
-		name: 'はんなり明朝(Google Fonts)',
+		name: 'はんなり明朝',
 		value: 'Hannari',
-		href: 'https://fonts.googleapis.com/earlyaccess/hannari.css'
+		css: 'Hannari',
+		url: 'https://fonts.googleapis.com/earlyaccess/hannari.css'
 	},
 	{
-		name: 'こころ明朝(Google Fonts)',
+		name: 'こころ明朝',
 		value: 'Kokoro',
-		href: 'https://fonts.googleapis.com/earlyaccess/kokoro.css'
+		css: 'Kokoro',
+		url: 'https://fonts.googleapis.com/earlyaccess/kokoro.css'
 	},
 	{
-		name: 'さわらび明朝(Google Fonts)',
+		name: 'さわらび明朝',
 		value: '"Sawarabi Mincho"',
-		href: 'https://fonts.googleapis.com/css?family=Sawarabi+Mincho'
+		css: 'Sawarabi Mincho',
+		url: 'https://fonts.googleapis.com/css?family=Sawarabi+Mincho'
 	},
 	{
-		name: 'さわらびゴシック(Google Fonts)',
+		name: 'さわらびゴシック',
 		value: '"Sawarabi Gothic"',
-		href: 'https://fonts.googleapis.com/css?family=Sawarabi+Gothic'
+		css: 'Sawarabi Gothic',
+		url: 'https://fonts.googleapis.com/css?family=Sawarabi+Gothic'
 	},
 	{
-		name: 'ニクキュウ(Google Fonts)',
+		name: 'ニクキュウ',
 		value: 'Nikukyu',
-		href: 'https://fonts.googleapis.com/earlyaccess/nikukyu.css'
+		css: 'Nikukyu',
+		url: 'https://fonts.googleapis.com/earlyaccess/nikukyu.css'
 	},
 	{
-		name: 'ニコモジ(Google Fonts)',
+		name: 'ニコモジ',
 		value: '"Nico Moji"',
-		href: 'https://fonts.googleapis.com/earlyaccess/nicomoji.css'
+		css: 'Nico Moji',
+		url: 'https://fonts.googleapis.com/earlyaccess/nicomoji.css'
 	},
 	{
-		name: 'Noto Sans JP(Google Fonts)',
+		name: 'Noto Sans JP',
 		value: '"Noto Sans JP"',
-		href: 'https://fonts.googleapis.com/css?family=Noto+Sans+JP'
+		url: 'https://fonts.googleapis.com/css?family=Noto+Sans+JP'
 	}
 ];
 
