@@ -358,27 +358,6 @@
 			>
 			<a class="hidden" bind:this={elAnchor} href="#download">Download</a>
 		</div>
-
-		<div class="my-2 w-full h-28">
-			<script
-				async
-				src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1226899637934496"
-				crossorigin="anonymous"
-			></script>
-			<!-- ディスプレイ -->
-			<ins
-				class="adsbygoogle"
-				style="display:block"
-				data-ad-client="ca-pub-1226899637934496"
-				data-ad-slot="2305250435"
-				data-ad-format="horizontal"
-				data-adtest={dev ? 'on' : 'off'}
-				data-full-width-responsive="true"
-			/>
-			<script>
-				(adsbygoogle = window.adsbygoogle || []).push({});
-			</script>
-		</div>
 	</div>
 	<!-- right -->
 	<div class="w-96 border-l border-slate-500 p-2 flex flex-col">
