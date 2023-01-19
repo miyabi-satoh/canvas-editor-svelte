@@ -380,10 +380,10 @@ export class Ellipse extends Layer implements IStrokeOption, IShadowOption, IFil
 
 	render(ctx: CanvasRenderingContext2D): void {
 		if (this.radiusX <= 0 || this.radiusY <= 0) {
-			console.log('x', this.x);
-			console.log('y', this.y);
-			console.log('rx', this.radiusX);
-			console.log('ry', this.radiusY);
+			// console.log('x', this.x);
+			// console.log('y', this.y);
+			// console.log('rx', this.radiusX);
+			// console.log('ry', this.radiusY);
 		} else {
 			this.shadowOption.apply(ctx);
 
