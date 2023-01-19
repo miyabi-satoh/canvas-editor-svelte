@@ -59,11 +59,58 @@
 		}
 	}
 
-	function updateCanvas() {
+	async function onLoadFonts() {
+		document.fonts.clear();
+		let fonts: { [key: string]: string } = {};
+		layers.forEach((layer) => {
+			if (layer instanceof TextData) {
+				if (layer.text.length > 0) {
+					const family = layer.family;
+					const url = families.find((f) => f.value == family)?.url;
+					if (url && url.includes('?')) {
+						fonts[url] = (fonts[url] ?? '') + layer.text;
+					}
+				}
+			}
+		});
+
+		for (const url in fonts) {
+			const family = families.find((f) => f.url == url);
+			if (family) {
+				const name = family.css ?? family.name;
+				let googleApiUrl = url;
+				if (url.includes('?')) {
+					googleApiUrl += `&text=${encodeURIComponent(fonts[url])}`;
+				}
+				const response = await fetch(googleApiUrl);
+				if (response.ok) {
+					// url()を抽出
+					const cssFontFace = await response.text();
+					let matchUrls = cssFontFace.match(/url\(.+?\.woff2\)/g);
+					if (!matchUrls) {
+						matchUrls = cssFontFace.match(/url\(.+?\)/g);
+						if (!matchUrls) {
+							throw new Error('フォントが見つかりませんでした');
+						}
+					}
+
+					for (const url of matchUrls) {
+						// 後は普通にFontFaceを追加
+						const font = new FontFace(name, url);
+						document.fonts.add(font);
+						await font.load();
+					}
+				}
+			}
+		}
+	}
+
+	async function updateCanvas() {
 		if (elCanvas) {
 			const ctx = elCanvas.getContext('2d');
 			if (ctx) {
-				console.log('updateCanvas');
+				await onLoadFonts();
+
 				ctx.clearRect(0, 0, elCanvas!.width, elCanvas.height);
 				[...layers].reverse().forEach((layer) => {
 					ctx.save();
@@ -153,12 +200,16 @@
 
 			reader.onload = () => {
 				if (current instanceof ImageData) {
+					const imgLayer = current;
+					current.elImage.onload = () => {
+						imgLayer.rect.x = imgLayer.rect.y = 0;
+						imgLayer.rect.width = imgLayer.elImage.naturalWidth;
+						imgLayer.rect.height = imgLayer.elImage.naturalHeight;
+						current = imgLayer;
+						console.log(imgLayer.rect);
+					};
 					current.elImage.src = reader.result as string;
 					current.fileName = file.name;
-
-					current.rect.x = current.rect.y = 0;
-					current.rect.width = current.elImage.naturalWidth;
-					current.rect.height = current.elImage.naturalHeight;
 				}
 			};
 			reader.readAsDataURL(file);
@@ -213,7 +264,6 @@
 
 	$: onChangeType(selectedLayerType);
 	function onChangeType(type: LayerType) {
-		console.log('onChangeType');
 		if (current && current.type != type) {
 			const id = current.id;
 			current = newLayer(type, id, current.name, canvasWidth, canvasHeight);
@@ -225,7 +275,6 @@
 
 	$: onChangeSelectedLayer(selectedLayerId);
 	function onChangeSelectedLayer(selected: number) {
-		console.log('onChangeSelectedLayer');
 		if ((current = layers.find((layer) => layer.id == selected))) {
 			selectedLayerType = current.type;
 		} else {
@@ -302,11 +351,32 @@
 			</div>
 		</div>
 
-		<div class="my-6 self-center">
+		<div class="my-2 self-center">
 			<Button disabled={layers.length == 0} on:click={handleClickDownload}
 				>画像をダウンロード</Button
 			>
 			<a class="hidden" bind:this={elAnchor} href="#download">Download</a>
+		</div>
+
+		<div class="my-2 w-full h-28">
+			<script
+				async
+				src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1226899637934496"
+				crossorigin="anonymous"
+			></script>
+			<!-- ディスプレイ -->
+			<ins
+				class="adsbygoogle"
+				style="display:block"
+				data-ad-client="ca-pub-1226899637934496"
+				data-ad-slot="2305250435"
+				data-ad-format="horizontal"
+				data-adtest="on"
+				data-full-width-responsive="true"
+			/>
+			<script>
+				(adsbygoogle = window.adsbygoogle || []).push({});
+			</script>
 		</div>
 	</div>
 	<!-- right -->
@@ -396,9 +466,14 @@
 						<div slot="props" class="ml-2 flex flex-col gap-1">
 							<Select
 								size="sm"
-								items={families}
 								bind:value={current.family}
 								placeholder="フォントファミリーを選択"
+								items={families.map((family) => {
+									return {
+										name: `${family.name}${family.url ? '(Web Font)' : ''}`,
+										value: family.value
+									};
+								})}
 							/>
 							<Select
 								size="sm"
