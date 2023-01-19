@@ -26,6 +26,7 @@ COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 USER nextjs
 
 # ENV NODE_ENV production
-ENV PORT 3001
+ENV PORT 3000
+EXPOSE 3000
 
 CMD ["node", "build"]
