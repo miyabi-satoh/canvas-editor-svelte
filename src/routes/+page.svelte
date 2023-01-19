@@ -32,6 +32,7 @@
 	import HAlignButtons from '$lib/HAlignButtons.svelte';
 	import VAlignButtons from '$lib/VAlignButtons.svelte';
 	import { families, textAligns, textBaselines, types } from '$lib/constants';
+	import { dev } from '$app/environment';
 
 	let elCanvas: HTMLCanvasElement;
 	let elDiv: HTMLDivElement;
@@ -371,7 +372,7 @@
 				data-ad-client="ca-pub-1226899637934496"
 				data-ad-slot="2305250435"
 				data-ad-format="horizontal"
-				data-adtest="on"
+				data-adtest={dev ? 'on' : 'off'}
 				data-full-width-responsive="true"
 			/>
 			<script>
