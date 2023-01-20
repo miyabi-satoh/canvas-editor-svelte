@@ -260,7 +260,6 @@
 	}
 
 	onMount(() => {
-		(window.adsbygoogle = window.adsbygoogle || []).push({});
 		handleClickAdd();
 	});
 
@@ -358,18 +357,6 @@
 				>画像をダウンロード</Button
 			>
 			<a class="hidden" bind:this={elAnchor} href="#download">Download</a>
-		</div>
-
-		<div class="my-2 w-full h-28">
-			<ins
-				class="adsbygoogle"
-				style="display:block"
-				data-ad-client="ca-pub-1226899637934496"
-				data-ad-slot="2305250435"
-				data-ad-format="horizontal"
-				data-adtest={dev ? 'on' : 'off'}
-				data-full-width-responsive="true"
-			/>
 		</div>
 	</div>
 	<!-- right -->

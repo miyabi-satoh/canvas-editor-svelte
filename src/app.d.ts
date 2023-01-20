@@ -7,7 +7,3 @@ declare namespace App {
 	// interface PageData {}
 	// interface Platform {}
 }
-
-interface Window {
-	adsbygoogle: { [key: string]: unknown }[];
-}
