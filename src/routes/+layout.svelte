@@ -14,11 +14,6 @@
 
 <svelte:head>
 	<title>Canvas Editor</title>
-	<script
-		async
-		src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1226899637934496"
-		crossorigin="anonymous"
-	></script>
 </svelte:head>
 <div class="h-screen flex flex-col">
 	<Navbar>

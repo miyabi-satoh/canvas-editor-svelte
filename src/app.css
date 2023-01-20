@@ -11,6 +11,7 @@
 			#ddd 270deg 360deg
 		);
 		background-size: 16px 16px;
+		@apply border border-gray-400;
 	}
 
 	button.btn-icon {
